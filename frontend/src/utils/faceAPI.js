@@ -175,19 +175,39 @@ export class FaceDetectionHelper {
     return Array.from(detection.descriptor);
   }
 
-  compareFaceDescriptors(descriptor1, descriptor2, threshold = 0.6) {
+  compareFaceDescriptors(descriptor1, descriptor2, threshold = 0.4) {
     if (!descriptor1 || !descriptor2 || descriptor1.length !== descriptor2.length) {
+      console.log('Face comparison: Invalid descriptors');
       return { match: false, distance: 1, confidence: 0 };
     }
+    
+    if (descriptor1.length !== 128 || descriptor2.length !== 128) {
+      console.log(`Face comparison: Invalid descriptor length - ${descriptor1.length}, ${descriptor2.length}`);
+      return { match: false, distance: 1, confidence: 0 };
+    }
+    
     let sum = 0;
     for (let i = 0; i < descriptor1.length; i++) {
       const a = Number(descriptor1[i]);
       const b = Number(descriptor2[i]);
+      if (isNaN(a) || isNaN(b)) {
+        return { match: false, distance: 1, confidence: 0 };
+      }
       sum += Math.pow(a - b, 2);
     }
     const distance = Math.sqrt(sum);
-    const match = distance < threshold;
-    const confidence = Math.max(0, Math.round((1 - distance) * 100));
+    
+    // Calculate confidence (100% at distance 0, decreasing as distance increases)
+    const confidence = Math.max(0, Math.min(100, Math.round((1 - distance) * 100)));
+    
+    // Require BOTH distance below threshold AND minimum 70% confidence
+    const MIN_CONFIDENCE = 70;
+    const distanceMatch = distance < threshold;
+    const confidenceMatch = confidence >= MIN_CONFIDENCE;
+    const match = distanceMatch && confidenceMatch;
+    
+    console.log(`Face comparison: distance=${distance.toFixed(4)}, threshold=${threshold}, confidence=${confidence}%, match=${match}`);
+    
     return { match, distance, confidence };
   }
 

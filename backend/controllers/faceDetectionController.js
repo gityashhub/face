@@ -76,21 +76,44 @@ function calculateGeoDistance(lat1, lon1, lat2, lon2) {
 }
 
 // Compare face descriptors using Euclidean distance
-// STRICT THRESHOLD: 0.35 for high accuracy face matching
-// Industry standard for face-api.js is 0.35-0.4 to prevent false positives
-function compareFaceDescriptors(descriptor1, descriptor2, threshold = 0.35) {
+// VERY STRICT THRESHOLD: 0.4 for accurate face matching while avoiding false rejections
+// The Euclidean distance threshold determines how similar two faces must be:
+// - 0.0 = identical faces
+// - 0.4 = same person threshold (strict)
+// - 0.6 = too loose, allows different people
+// Minimum confidence of 70% required for a valid match
+const FACE_MATCH_THRESHOLD = 0.4;
+const MIN_CONFIDENCE_REQUIRED = 70;
+
+function compareFaceDescriptors(descriptor1, descriptor2, threshold = FACE_MATCH_THRESHOLD) {
   if (!Array.isArray(descriptor1) || !Array.isArray(descriptor2)) {
+    console.log('Face comparison: Invalid descriptor arrays');
+    return { match: false, distance: Infinity, confidence: 0 };
+  }
+
+  if (descriptor1.length !== 128 || descriptor2.length !== 128) {
+    console.log(`Face comparison: Invalid descriptor length - got ${descriptor1.length} and ${descriptor2.length}`);
     return { match: false, distance: Infinity, confidence: 0 };
   }
 
   const distance = calculateEuclideanDistance(descriptor1, descriptor2);
   if (!Number.isFinite(distance)) {
+    console.log('Face comparison: Distance calculation returned non-finite value');
     return { match: false, distance: Infinity, confidence: 0 };
   }
 
-  const match = distance < threshold;
-  // Better confidence calculation: 100% at distance 0, 0% at distance >= threshold
-  const confidence = Math.max(0, Math.min(100, Math.round((1 - distance / threshold) * 100)));
+  // Calculate confidence as percentage (100% at distance 0, decreasing as distance increases)
+  // Using a more realistic scale where threshold distance = ~50% confidence
+  const confidence = Math.max(0, Math.min(100, Math.round((1 - (distance / 1.0)) * 100)));
+  
+  // Match requires BOTH:
+  // 1. Distance below threshold
+  // 2. Confidence above minimum required
+  const distanceMatch = distance < threshold;
+  const confidenceMatch = confidence >= MIN_CONFIDENCE_REQUIRED;
+  const match = distanceMatch && confidenceMatch;
+
+  console.log(`Face comparison: distance=${distance.toFixed(4)}, threshold=${threshold}, confidence=${confidence}%, match=${match}`);
 
   return { match, distance, confidence };
 }
@@ -290,7 +313,7 @@ export const verifyFaceAttendance = async (req, res) => {
     storedDescriptor = storedDescriptor.map(x => Number(x));
 
     // Compare descriptors with strict threshold
-    const comparison = compareFaceDescriptors(incomingDescriptor, storedDescriptor, 0.35);
+    const comparison = compareFaceDescriptors(incomingDescriptor, storedDescriptor, FACE_MATCH_THRESHOLD);
 
     if (!comparison.match) {
       return res.status(401).json({
