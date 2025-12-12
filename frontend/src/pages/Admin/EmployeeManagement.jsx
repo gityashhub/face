@@ -613,7 +613,7 @@ const EmployeeManagement = () => {
   const startFaceDetection = async () => {
     if (!videoRef.current || !canvasRef.current) return;
     const intervalId = setInterval(async () => {
-      if (videoRef.current && videoRef.current.readyState >= 2) {
+      if (videoRef.current && videoRef.current.readyState >= 2 && canvasRef.current) {
         try {
           const options = new faceapi.TinyFaceDetectorOptions({
             inputSize: 320,
@@ -624,7 +624,9 @@ const EmployeeManagement = () => {
             .withFaceLandmarks()
             .withFaceDescriptors();
           const canvas = canvasRef.current;
+          if (!canvas) return;
           const ctx = canvas.getContext('2d');
+          if (!ctx) return;
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           if (detections && detections.length > 0) {
             setFaceDetected(true);
@@ -732,14 +734,14 @@ const EmployeeManagement = () => {
       const thumbnail = thumbCanvas.toDataURL('image/jpeg', 0.85);
       const confidence = Math.round(detection.detection.score * 100);
       const faceData = {
-        pose: POSES[currentPoseIndex],
+        pose: POSES[currentPoseIndex].name,
         descriptor: faceDescriptor,
         thumbnail: thumbnail,
         confidence: confidence
       };
       setCapturedDescriptors(prev => [...prev, faceData]);
-      setPosesCaptured(prev => [...prev, POSES[currentPoseIndex]]);
-      toast.success(`Pose "${POSES[currentPoseIndex]}" captured successfully! (${posesCaptured.length + 1}/4)`);
+      setPosesCaptured(prev => [...prev, POSES[currentPoseIndex].name]);
+      toast.success(`Pose "${POSES[currentPoseIndex].name}" captured successfully! (${posesCaptured.length + 1}/4)`);
       if (posesCaptured.length + 1 >= 4) {
         const finalDescriptors = [...capturedDescriptors, faceData];
         const averageDescriptor = finalDescriptors[0].descriptor.map((_, i) =>

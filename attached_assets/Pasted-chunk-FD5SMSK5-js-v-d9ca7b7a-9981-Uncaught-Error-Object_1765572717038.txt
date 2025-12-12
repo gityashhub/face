@@ -1,0 +1,64 @@
+chunk-FD5SMSK5.js?v=d9ca7b7a:9981 Uncaught Error: Objects are not valid as a React child (found: object with keys {name, instruction, emoji}). If you meant to render a collection of children, use an array instead.
+    at throwOnInvalidObjectType (chunk-FD5SMSK5.js?v=d9ca7b7a:9981:17)
+    at reconcileChildFibers2 (chunk-FD5SMSK5.js?v=d9ca7b7a:10611:15)
+    at reconcileChildren (chunk-FD5SMSK5.js?v=d9ca7b7a:14338:37)
+    at updateHostComponent (chunk-FD5SMSK5.js?v=d9ca7b7a:14855:11)
+    at beginWork (chunk-FD5SMSK5.js?v=d9ca7b7a:15983:22)
+    at HTMLUnknownElement.callCallback2 (chunk-FD5SMSK5.js?v=d9ca7b7a:3680:22)
+    at Object.invokeGuardedCallbackDev (chunk-FD5SMSK5.js?v=d9ca7b7a:3705:24)
+    at invokeGuardedCallback (chunk-FD5SMSK5.js?v=d9ca7b7a:3739:39)
+    at beginWork$1 (chunk-FD5SMSK5.js?v=d9ca7b7a:19818:15)
+    at performUnitOfWork (chunk-FD5SMSK5.js?v=d9ca7b7a:19251:20)Understand this error
+chunk-FD5SMSK5.js?v=d9ca7b7a:9981 Uncaught Error: Objects are not valid as a React child (found: object with keys {name, instruction, emoji}). If you meant to render a collection of children, use an array instead.
+    at throwOnInvalidObjectType (chunk-FD5SMSK5.js?v=d9ca7b7a:9981:17)
+    at reconcileChildFibers2 (chunk-FD5SMSK5.js?v=d9ca7b7a:10611:15)
+    at reconcileChildren (chunk-FD5SMSK5.js?v=d9ca7b7a:14338:37)
+    at updateHostComponent (chunk-FD5SMSK5.js?v=d9ca7b7a:14855:11)
+    at beginWork (chunk-FD5SMSK5.js?v=d9ca7b7a:15983:22)
+    at HTMLUnknownElement.callCallback2 (chunk-FD5SMSK5.js?v=d9ca7b7a:3680:22)
+    at Object.invokeGuardedCallbackDev (chunk-FD5SMSK5.js?v=d9ca7b7a:3705:24)
+    at invokeGuardedCallback (chunk-FD5SMSK5.js?v=d9ca7b7a:3739:39)
+    at beginWork$1 (chunk-FD5SMSK5.js?v=d9ca7b7a:19818:15)
+    at performUnitOfWork (chunk-FD5SMSK5.js?v=d9ca7b7a:19251:20)Understand this error
+chunk-FD5SMSK5.js?v=d9ca7b7a:14080 The above error occurred in the <p> component:
+
+    at p
+    at div
+    at div
+    at div
+    at div
+    at div
+    at div
+    at div
+    at div
+    at AddEmployeeModal (https://4a6b5dfc-a731-431b-a89d-fd9d5d89cc1d-00-1vy2katb9cf3r.riker.replit.dev/src/pages/Admin/EmployeeManagement.jsx:25:3)
+    at div
+    at main
+    at div
+    at div
+    at AdminLayout (https://4a6b5dfc-a731-431b-a89d-fd9d5d89cc1d-00-1vy2katb9cf3r.riker.replit.dev/src/components/Admin/layout/AdminLayout.jsx:7:24)
+    at EmployeeManagement (https://4a6b5dfc-a731-431b-a89d-fd9d5d89cc1d-00-1vy2katb9cf3r.riker.replit.dev/src/pages/Admin/EmployeeManagement.jsx:1074:37)
+    at ProtectedRoute (https://4a6b5dfc-a731-431b-a89d-fd9d5d89cc1d-00-1vy2katb9cf3r.riker.replit.dev/src/routes/ProtectedRoute.jsx:4:27)
+    at RenderedRoute (https://4a6b5dfc-a731-431b-a89d-fd9d5d89cc1d-00-1vy2katb9cf3r.riker.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=d9ca7b7a:5605:26)
+    at Routes (https://4a6b5dfc-a731-431b-a89d-fd9d5d89cc1d-00-1vy2katb9cf3r.riker.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=d9ca7b7a:6496:3)
+    at Router (https://4a6b5dfc-a731-431b-a89d-fd9d5d89cc1d-00-1vy2katb9cf3r.riker.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=d9ca7b7a:6439:13)
+    at BrowserRouter (https://4a6b5dfc-a731-431b-a89d-fd9d5d89cc1d-00-1vy2katb9cf3r.riker.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=d9ca7b7a:9531:3)
+    at div
+    at App (https://4a6b5dfc-a731-431b-a89d-fd9d5d89cc1d-00-1vy2katb9cf3r.riker.replit.dev/src/App.jsx:30:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ chunk-FD5SMSK5.js?v=d9ca7b7a:14080Understand this error
+chunk-FD5SMSK5.js?v=d9ca7b7a:19466 Uncaught Error: Objects are not valid as a React child (found: object with keys {name, instruction, emoji}). If you meant to render a collection of children, use an array instead.
+    at throwOnInvalidObjectType (chunk-FD5SMSK5.js?v=d9ca7b7a:9981:17)
+    at reconcileChildFibers2 (chunk-FD5SMSK5.js?v=d9ca7b7a:10611:15)
+    at reconcileChildren (chunk-FD5SMSK5.js?v=d9ca7b7a:14338:37)
+    at updateHostComponent (chunk-FD5SMSK5.js?v=d9ca7b7a:14855:11)
+    at beginWork (chunk-FD5SMSK5.js?v=d9ca7b7a:15983:22)
+    at beginWork$1 (chunk-FD5SMSK5.js?v=d9ca7b7a:19806:22)
+    at performUnitOfWork (chunk-FD5SMSK5.js?v=d9ca7b7a:19251:20)
+    at workLoopSync (chunk-FD5SMSK5.js?v=d9ca7b7a:19190:13)
+    at renderRootSync (chunk-FD5SMSK5.js?v=d9ca7b7a:19169:15)
+    at recoverFromConcurrentError (chunk-FD5SMSK5.js?v=d9ca7b7a:18786:28)Understand this error
+EmployeeManagement.jsx:658 Face detection error: TypeError: Cannot read properties of null (reading 'getContext')
+    at EmployeeManagement.jsx:627:30
