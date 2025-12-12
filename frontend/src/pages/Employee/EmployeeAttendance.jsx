@@ -78,50 +78,38 @@ const EmployeeAttendance = () => {
     return () => clearInterval(interval);
   }, [hasCheckedIn, hasCheckedOut, todayAttendance]);
 
-  // Check if models are already loaded on mount
+  // Load face-api models on mount
   useEffect(() => {
-    const checkModelsLoaded = () => {
-      const isLoaded = faceapi.nets.tinyFaceDetector.isLoaded && 
-                       faceapi.nets.faceRecognitionNet.isLoaded;
-      if (isLoaded) {
+    const loadModels = async () => {
+      try {
+        // Check if already loaded
+        if (faceapi.nets.tinyFaceDetector.isLoaded && 
+            faceapi.nets.faceLandmark68Net.isLoaded && 
+            faceapi.nets.faceRecognitionNet.isLoaded) {
+          setModelsLoaded(true);
+          console.log('Face models already available');
+          return;
+        }
+
+        const MODEL_URL = '/models';
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+        ]);
         setModelsLoaded(true);
-        console.log('Face models already loaded');
+        console.log('Face detection models loaded');
+      } catch (error) {
+        console.error('Error loading face models:', error);
+        toast.error('Failed to load face detection models');
       }
     };
-    checkModelsLoaded();
+    loadModels();
   }, []);
-
-  // Load face-api models
-  const loadModels = async () => {
-    try {
-      // Check if already loaded
-      if (faceapi.nets.tinyFaceDetector.isLoaded && faceapi.nets.faceRecognitionNet.isLoaded) {
-        setModelsLoaded(true);
-        console.log('Face models already available');
-        return;
-      }
-
-      const MODEL_URL = '/models';
-      await Promise.all([
-        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-        faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
-        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-      ]);
-      setModelsLoaded(true);
-      console.log('Face detection models loaded');
-    } catch (error) {
-      console.error('Error loading face models:', error);
-      toast.error('Failed to load face detection models');
-    }
-  };
 
   // Start camera for face verification
   const startCamera = async () => {
     try {
-      if (!modelsLoaded) {
-        await loadModels();
-      }
-      
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { 
           facingMode: 'user',
@@ -180,7 +168,7 @@ const EmployeeAttendance = () => {
         try {
           const detection = await faceapi
             .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
-            .withFaceLandmarks(true);
+            .withFaceLandmarks();
 
           const ctx = canvas.getContext('2d');
           ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -228,7 +216,7 @@ const EmployeeAttendance = () => {
       // Get face descriptor
       const detection = await faceapi
         .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 }))
-        .withFaceLandmarks(true)
+        .withFaceLandmarks()
         .withFaceDescriptor();
 
       if (!detection) {
