@@ -30,18 +30,29 @@ const login = async (req, res) => {
     const identifier = email.trim();
     let user;
     
-    // Only Email-based login (no Employee ID as username)
-    console.log('Email login attempt:', identifier);
+    // Check if identifier is an email or employee ID
+    const isEmail = identifier.includes('@');
     
-    user = await User.findOne({ 
-      email: identifier.toLowerCase(),
-      isActive: true
-    }).select('+password');
+    if (isEmail) {
+      // Email-based login
+      console.log('Email login attempt:', identifier);
+      user = await User.findOne({ 
+        email: identifier.toLowerCase(),
+        isActive: true
+      }).select('+password');
+    } else {
+      // Employee ID-based login
+      console.log('Employee ID login attempt:', identifier);
+      user = await User.findOne({ 
+        employeeId: identifier.toUpperCase(),
+        isActive: true
+      }).select('+password');
+    }
 
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password'
+        message: isEmail ? 'Invalid email or password' : 'Invalid Employee ID or password'
       });
     }
 

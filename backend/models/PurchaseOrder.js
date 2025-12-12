@@ -30,7 +30,6 @@ const purchaseOrderSchema = new mongoose.Schema({
   poNumber: {
     type: String,
     required: true,
-    unique: true,
     trim: true
   },
   supplier: {
@@ -73,8 +72,8 @@ const purchaseOrderSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Indexes for performance
-purchaseOrderSchema.index({ poNumber: 1 });
+// Indexes for performance - poNumber is unique
+purchaseOrderSchema.index({ poNumber: 1 }, { unique: true });
 purchaseOrderSchema.index({ status: 1 });
 purchaseOrderSchema.index({ supplier: 1 });
 purchaseOrderSchema.index({ createdAt: -1 });

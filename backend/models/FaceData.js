@@ -62,7 +62,7 @@ const faceDataSchema = new mongoose.Schema({
 });
 
 // Indexes for better query performance
-faceDataSchema.index({ employee: 1 });
+// Note: employee already has unique:true in schema, so no need for separate index
 faceDataSchema.index({ user: 1 });
 faceDataSchema.index({ isActive: 1 });
 

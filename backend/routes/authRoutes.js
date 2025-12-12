@@ -6,11 +6,20 @@ import { protect } from '../middleware/auth.js';
 const router = express.Router();
 
 // Validation middleware
+// Accept either email or employee ID for login
 const loginValidation = [
   body('email')
-    .isEmail()
-    .normalizeEmail()
-    .withMessage('Please provide a valid email'),
+    .notEmpty()
+    .withMessage('Email or Employee ID is required')
+    .custom((value) => {
+      // Accept either valid email OR employee ID format (alphanumeric with hyphens/underscores)
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const employeeIdRegex = /^[A-Za-z0-9_-]+$/;
+      if (!emailRegex.test(value) && !employeeIdRegex.test(value)) {
+        throw new Error('Please provide a valid email or employee ID');
+      }
+      return true;
+    }),
   body('password')
     .notEmpty()
     .withMessage('Password is required')

@@ -15,11 +15,15 @@ const Header = ({ sidebarItems, location, setSidebarOpen }) => {
   
   // Use ref to prevent multiple simultaneous API calls
   const fetchingRef = useRef(false);
+  // Ref for profile dropdown container to detect outside clicks
+  const profileDropdownRef = useRef(null);
 
   // Close dropdowns when clicking outside or on mobile
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (profileDropdown) {
+      // Only close if click is outside the profile dropdown container
+      if (profileDropdown && profileDropdownRef.current && 
+          !profileDropdownRef.current.contains(event.target)) {
         setProfileDropdown(false);
       }
     };
@@ -270,7 +274,7 @@ if (response.data.success) {
           />
 
           {/* Profile */}
-          <div className="relative">
+          <div className="relative" ref={profileDropdownRef}>
             <button
               onClick={() => setProfileDropdown(!profileDropdown)}
               className="flex items-center space-x-2 sm:space-x-3 p-1 sm:p-2 rounded-lg hover:bg-secondary-700/50 transition-colors"
@@ -291,7 +295,7 @@ if (response.data.success) {
               </div>
               
               {/* Show only on larger screens */}
-              <ChevronDown className="w-4 h-4 text-secondary-400 hidden sm:block" />
+              <ChevronDown className={`w-4 h-4 text-secondary-400 hidden sm:block transition-transform ${profileDropdown ? 'rotate-180' : ''}`} />
             </button>
 
             {profileDropdown && (

@@ -114,15 +114,14 @@ const attendanceSchema = new mongoose.Schema({
     default: ''
   }
 }, {
-  timestamps: true,
-  indexes: [
-    { employee: 1, date: 1 }, // Compound index for faster queries
-    { user: 1, date: 1 },
-    { date: 1 },
-    { status: 1 },
-    { checkInTime: 1 }
-  ]
+  timestamps: true
 });
+
+// Create indexes - avoid duplicates by only defining them once here
+attendanceSchema.index({ user: 1, date: 1 });
+attendanceSchema.index({ date: 1 });
+attendanceSchema.index({ status: 1 });
+attendanceSchema.index({ checkInTime: 1 });
 
 // Compound unique index to prevent duplicate attendance for same day
 attendanceSchema.index(
