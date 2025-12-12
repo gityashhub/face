@@ -73,6 +73,29 @@ export class FaceDetectionHelper {
       const faceapi = mod.default || mod;
       this.faceapi = faceapi;
 
+      // Try to set CPU backend if WebGL is not available
+      const tf = faceapi.tf;
+      if (tf) {
+        try {
+          const webglReady = await tf.setBackend('webgl').catch(() => false);
+          if (!webglReady) {
+            console.log('WebGL not available, switching to CPU backend...');
+            await tf.setBackend('cpu');
+          }
+          await tf.ready();
+          console.log('TensorFlow.js backend:', tf.getBackend());
+        } catch (backendError) {
+          console.warn('Backend setup warning:', backendError);
+          try {
+            await tf.setBackend('cpu');
+            await tf.ready();
+            console.log('Using CPU backend as fallback');
+          } catch (cpuError) {
+            console.warn('CPU backend also failed:', cpuError);
+          }
+        }
+      }
+
       // Validate modelsPath accessibility (optional but helpful)
       try {
         const check = await fetch(`${modelsPath}/`);

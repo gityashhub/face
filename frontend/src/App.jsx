@@ -28,6 +28,30 @@ function App() {
 useEffect(() => {
   const loadFaceModels = async () => {
     try {
+      // Setup TensorFlow.js backend - try WebGL first, then CPU
+      const tf = faceapi.tf;
+      if (tf) {
+        // Get available backends
+        const backends = ['webgl', 'cpu'];
+        let backendSet = false;
+        
+        for (const backend of backends) {
+          if (backendSet) break;
+          try {
+            await tf.setBackend(backend);
+            await tf.ready();
+            console.log('TensorFlow.js backend:', tf.getBackend());
+            backendSet = true;
+          } catch (err) {
+            console.warn(`Backend ${backend} failed:`, err.message);
+          }
+        }
+        
+        if (!backendSet) {
+          console.warn('No TensorFlow.js backend available, face detection may not work');
+        }
+      }
+      
       await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
       await faceapi.nets.faceLandmark68Net.loadFromUri('/models');
       await faceapi.nets.faceRecognitionNet.loadFromUri('/models');

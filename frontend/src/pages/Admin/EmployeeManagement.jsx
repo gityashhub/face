@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { employeeAPI, departmentAPI } from '../../utils/api';
 import AdminLayout from '../../components/Admin/layout/AdminLayout';
+import * as faceapi from 'face-api.js';
 import {
   Plus,
   Search,
@@ -792,6 +793,47 @@ const EmployeeManagement = () => {
   useEffect(() => {
     fetchEmployees();
     return () => stopCamera();
+  }, []);
+
+  // Load face-api models with CPU backend fallback
+  useEffect(() => {
+    const loadFaceModels = async () => {
+      try {
+        // Setup TensorFlow.js backend - try WebGL first, then CPU
+        const tf = faceapi.tf;
+        if (tf) {
+          const backends = ['webgl', 'cpu'];
+          let backendSet = false;
+          
+          for (const backend of backends) {
+            if (backendSet) break;
+            try {
+              await tf.setBackend(backend);
+              await tf.ready();
+              console.log('TensorFlow.js backend:', tf.getBackend());
+              backendSet = true;
+            } catch (err) {
+              console.warn(`Backend ${backend} failed:`, err.message);
+            }
+          }
+          
+          if (!backendSet) {
+            console.warn('No TensorFlow.js backend available');
+          }
+        }
+
+        await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
+        await faceapi.nets.faceLandmark68Net.loadFromUri('/models');
+        await faceapi.nets.faceRecognitionNet.loadFromUri('/models');
+        console.log('Face models loaded successfully in EmployeeManagement');
+        setGlobalModelsLoaded(true);
+      } catch (error) {
+        console.error('Failed to load face models:', error);
+        toast.error('Failed to load face recognition models');
+      }
+    };
+
+    loadFaceModels();
   }, []);
 
   useEffect(() => {
