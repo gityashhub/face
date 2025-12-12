@@ -5,7 +5,7 @@ import API from './api';
 export const OFFICE_LOCATION = {
   latitude: 22.29269924053806,  // Updated to match controller
   longitude: 73.12228427139301, // Updated to match controller
-  radius: 1500 // meters
+  radius: 999999 // meters - TEMPORARILY INCREASED FOR TESTING (was 1500)
 };
 
 // Geolocation utility functions
