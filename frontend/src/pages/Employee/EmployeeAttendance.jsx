@@ -78,9 +78,29 @@ const EmployeeAttendance = () => {
     return () => clearInterval(interval);
   }, [hasCheckedIn, hasCheckedOut, todayAttendance]);
 
+  // Check if models are already loaded on mount
+  useEffect(() => {
+    const checkModelsLoaded = () => {
+      const isLoaded = faceapi.nets.tinyFaceDetector.isLoaded && 
+                       faceapi.nets.faceRecognitionNet.isLoaded;
+      if (isLoaded) {
+        setModelsLoaded(true);
+        console.log('Face models already loaded');
+      }
+    };
+    checkModelsLoaded();
+  }, []);
+
   // Load face-api models
   const loadModels = async () => {
     try {
+      // Check if already loaded
+      if (faceapi.nets.tinyFaceDetector.isLoaded && faceapi.nets.faceRecognitionNet.isLoaded) {
+        setModelsLoaded(true);
+        console.log('Face models already available');
+        return;
+      }
+
       const MODEL_URL = '/models';
       await Promise.all([
         faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
