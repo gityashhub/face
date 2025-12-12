@@ -41,7 +41,7 @@ const AdminLeaveManagement = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/leaves', {
+      const response = await axios.get('/api/leaves', {
         headers: { Authorization: `Bearer ${token}` },
         params: {
           search: searchTerm,
@@ -65,7 +65,7 @@ const AdminLeaveManagement = () => {
   const fetchStats = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/leaves/stats', {
+      const response = await axios.get('/api/leaves/stats', {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -87,7 +87,7 @@ const AdminLeaveManagement = () => {
       setActionLoading(true);
       const token = localStorage.getItem('token');
       
-      await axios.put(`http://localhost:5000/api/leaves/${leaveId}/approve`, 
+      await axios.put(`/api/leaves/${leaveId}/approve`, 
         { comments },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -109,7 +109,7 @@ const AdminLeaveManagement = () => {
       setActionLoading(true);
       const token = localStorage.getItem('token');
       
-      await axios.put(`http://localhost:5000/api/leaves/${leaveId}/reject`, 
+      await axios.put(`/api/leaves/${leaveId}/reject`, 
         { comments },
         { headers: { Authorization: `Bearer ${token}` } }
       );

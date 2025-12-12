@@ -49,7 +49,7 @@ const EmployeeLeaveRequests = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/leaves', {
+      const response = await axios.get('/api/leaves', {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -68,7 +68,7 @@ const EmployeeLeaveRequests = () => {
 const fetchLeaveBalance = async () => {
   try {
     const token = localStorage.getItem('token');
-    const response = await axios.get('http://localhost:5000/api/leaves/balance', {
+    const response = await axios.get('/api/leaves/balance', {
       headers: { Authorization: `Bearer ${token}` }
     });
     
@@ -129,7 +129,7 @@ const handleApplyLeave = async (e) => {
 
     console.log('Sending leave data:', leaveData); // Debug log
 
-    const response = await axios.post('http://localhost:5000/api/leaves', leaveData, {
+    const response = await axios.post('/api/leaves', leaveData, {
       headers: { Authorization: `Bearer ${token}` }
     });
 
@@ -168,7 +168,7 @@ const handleApplyLeave = async (e) => {
     if (window.confirm('Are you sure you want to cancel this leave request?')) {
       try {
         const token = localStorage.getItem('token');
-        await axios.put(`http://localhost:5000/api/leaves/${leaveId}/cancel`, {}, {
+        await axios.put(`/api/leaves/${leaveId}/cancel`, {}, {
           headers: { Authorization: `Bearer ${token}` }
         });
         

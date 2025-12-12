@@ -42,7 +42,7 @@ const Login = () => {
         identifierType: isEmployeeId(loginData.email) ? 'Employee ID' : 'Email'
       });
 
-      const response = await axios.post('http://localhost:5000/api/auth/login', loginData);
+      const response = await axios.post('/api/auth/login', loginData);
 
       if (response.data.success) {
         // Store authentication data - NEVER use localStorage in production Claude artifacts

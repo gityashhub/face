@@ -3,7 +3,7 @@ import { Lock, Eye, EyeOff, Building2, AlertCircle, CheckCircle, ArrowLeft } fro
 
 // Simulated API functions
 const verifyResetToken = async (token) => {
-  const response = await fetch(`http://localhost:5000/api/auth/verify-reset-token/${token}`);
+  const response = await fetch(`/api/auth/verify-reset-token/${token}`);
   
   if (!response.ok) {
     const errorData = await response.json();
@@ -14,7 +14,7 @@ const verifyResetToken = async (token) => {
 };
 
 const resetPassword = async (token, password, confirmPassword) => {
-  const response = await fetch(`http://localhost:5000/api/auth/reset-password/${token}`, {
+  const response = await fetch(`/api/auth/reset-password/${token}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

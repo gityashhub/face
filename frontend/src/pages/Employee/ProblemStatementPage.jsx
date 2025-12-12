@@ -18,8 +18,8 @@ const ProblemStatementPage = () => {
   const [newProblem, setNewProblem] = useState('');
   const [employeeData, setEmployeeData] = useState(null);
 
-  // ✅ Use full backend URL
-  const API_BASE = 'http://localhost:5000/api';
+  // Use relative path for Vite proxy
+  const API_BASE = '/api';
   const getAuthToken = () => localStorage.getItem('token');
 
   useEffect(() => {

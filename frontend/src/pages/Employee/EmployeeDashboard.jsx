@@ -281,12 +281,8 @@ const EmployeeDashboard = () => {
       };
       fetchPeers();
 
-      const socketUrl = process.env.NODE_ENV === 'production'
-        ? process.env.REACT_APP_API_URL || 'http://localhost:5000'
-        : 'http://localhost:5000';
-
-      // ✅ CONNECT TO /employee NAMESPACE
-      const socket = io(`${socketUrl}/employee`, {
+      // Connect via relative path - Vite will proxy this
+      const socket = io('/employee', {
         auth: { token: localStorage.getItem('token') },
         transports: ['websocket']
       });

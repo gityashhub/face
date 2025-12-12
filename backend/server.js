@@ -5,6 +5,11 @@ import helmet from 'helmet';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 import connectDB from './config/db.js';
 import errorHandler from './middleware/errorHandler.js';
@@ -33,13 +38,13 @@ import purchaseRoutes from './routes/purchaseRoutes.js';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3001;
 
 // ----------------- MIDDLEWARE -----------------
 
 // CORS Configuration - MUST BE BEFORE OTHER MIDDLEWARE
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:8080', 'http://localhost:4000'],
+  origin: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
@@ -86,32 +91,32 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Root endpoint
-app.get('/', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Employee Management System API',
-    version: '1.0.0',
-    endpoints: {
-      auth: '/api/auth',
-      employees: '/api/employees',
-      dashboard: '/api/dashboard',
-      leaves: '/api/leaves',
-      tasks: '/api/tasks',
-      users: '/api/users'
-    }
+// Serve static files from React app in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../frontend/dist')));
+  
+  // Handle React routing, return all requests to React app
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
   });
-});
-
-// ----------------- ERROR HANDLERS -----------------
-
-// 404 handler for undefined routes
-// app.use('*', (req, res) => {
-//   res.status(404).json({
-//     success: false,
-//     message: `Route ${req.originalUrl} not found`
-//   });
-// });
+} else {
+  // Root endpoint for development
+  app.get('/', (req, res) => {
+    res.json({
+      success: true,
+      message: 'Employee Management System API',
+      version: '1.0.0',
+      endpoints: {
+        auth: '/api/auth',
+        employees: '/api/employees',
+        dashboard: '/api/dashboard',
+        leaves: '/api/leaves',
+        tasks: '/api/tasks',
+        users: '/api/users'
+      }
+    });
+  });
+}
 
 // Global error handler (must be last)
 app.use(errorHandler);
@@ -133,7 +138,7 @@ const startServer = async () => {
     // Initialize Socket.IO
     const io = new SocketIOServer(httpServer, {
       cors: {
-        origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174'],
+        origin: true,
         methods: ['GET', 'POST'],
         credentials: true
       }
