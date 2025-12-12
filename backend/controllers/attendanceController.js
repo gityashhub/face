@@ -564,8 +564,8 @@ export const checkInWithFace = async (req, res) => {
     const mag2 = Math.sqrt(currentDescriptor.reduce((sum, val) => sum + val * val, 0));
     const similarity = dotProduct / (mag1 * mag2);
 
-    // Threshold for match (adjust as needed - 0.6 is typical)
-    const threshold = 0.6;
+    // STRICT threshold for cosine similarity (higher = stricter, 0.75 for high accuracy)
+    const threshold = 0.75;
     const faceMatch = similarity > threshold;
 
     console.log('Face verification result:', {
@@ -754,8 +754,8 @@ export const verifyFace = async (req, res) => {
     const mag2 = Math.sqrt(currentDescriptor.reduce((sum, val) => sum + val * val, 0));
     const similarity = dotProduct / (mag1 * mag2);
 
-    // Threshold for match (adjust as needed - 0.6 is typical)
-    const threshold = 0.6;
+    // STRICT threshold for cosine similarity (higher = stricter, 0.75 for high accuracy)
+    const threshold = 0.75;
     const match = similarity > threshold;
 
     console.log('Face verification result:', {
