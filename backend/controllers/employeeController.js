@@ -45,32 +45,38 @@ export const createEmployee = async (req, res) => {
       });
     }
 
-    // Create user account first
+    // Extract and validate face data FIRST - FACE REGISTRATION IS COMPULSORY
+    // Validate BEFORE creating user to avoid orphaned users
+    const { faceDescriptor, faceImage, hasFaceRegistered, ...cleanEmployeeData } = employeeData;
+    
+    // COMPULSORY: Validate face descriptor - employee MUST have valid face data
+    if (!faceDescriptor || !Array.isArray(faceDescriptor)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Face registration is compulsory. Please capture employee face data before creating the account.'
+      });
+    }
+
+    if (faceDescriptor.length !== 128 || !faceDescriptor.every(val => typeof val === 'number' && !isNaN(val))) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid face data. Face descriptor must be a valid 128-dimensional vector. Please recapture the face.'
+      });
+    }
+
+    // Face data is valid - now safe to create user
+    const validFaceDescriptor = faceDescriptor;
+    const validFaceImage = faceImage;
+    const faceRegistered = true;
+    console.log('✅ Valid face descriptor received:', faceDescriptor.length, 'dimensions');
+
+    // Create user account AFTER face validation to avoid orphans
     const user = await User.create({
       name: `${employeeData.personalInfo.firstName} ${employeeData.personalInfo.lastName}`,
       email: email,
       password: 'temp123', // Temporary password
       role: 'employee'
     });
-
-    // Extract and validate face data
-    const { faceDescriptor, faceImage, hasFaceRegistered, ...cleanEmployeeData } = employeeData;
-    
-    // Validate face descriptor if provided
-    let validFaceDescriptor = null;
-    let validFaceImage = null;
-    let faceRegistered = false;
-
-    if (faceDescriptor && Array.isArray(faceDescriptor)) {
-      if (faceDescriptor.length === 128 && faceDescriptor.every(val => typeof val === 'number' && !isNaN(val))) {
-        validFaceDescriptor = faceDescriptor;
-        validFaceImage = faceImage;
-        faceRegistered = true;
-        console.log('✅ Valid face descriptor received:', faceDescriptor.length, 'dimensions');
-      } else {
-        console.warn('⚠️ Invalid face descriptor format:', faceDescriptor.length, 'dimensions');
-      }
-    }
 
     // Create employee record
     const employee = await Employee.create({

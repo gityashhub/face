@@ -112,15 +112,10 @@ const AddEmployeeModal = ({
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <label className="flex items-center space-x-2 text-xs sm:text-sm text-secondary-300">
-              <input
-                type="checkbox"
-                checked={faceRegistrationEnabled}
-                onChange={(e) => setFaceRegistrationEnabled(e.target.checked)}
-                className="rounded border-secondary-600 text-neon-pink focus:ring-neon-pink focus:ring-offset-0"
-              />
-              <span>Enable Face Registration</span>
-            </label>
+            <div className="flex items-center space-x-2 text-xs sm:text-sm text-green-400">
+              <Camera className="w-4 h-4" />
+              <span>Face Registration Required</span>
+            </div>
             <button 
               onClick={resetForm}
               className="text-secondary-400 hover:text-white"
@@ -308,7 +303,7 @@ const AddEmployeeModal = ({
                 type="submit"
                 className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-neon-pink to-neon-purple text-white font-semibold text-sm rounded-lg hover-glow transition-all duration-300"
               >
-                {faceRegistrationEnabled ? 'Next: Face Registration' : 'Create Employee'}
+                Next: Face Registration
               </button>
             </div>
           </form>
@@ -486,7 +481,7 @@ const EmployeeManagement = () => {
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [departments, setDepartments] = useState([]);
   const [currentStep, setCurrentStep] = useState(1);
-  const [faceRegistrationEnabled, setFaceRegistrationEnabled] = useState(false);
+  const [faceRegistrationEnabled, setFaceRegistrationEnabled] = useState(true); // Face registration is now COMPULSORY
   const [globalModelsLoaded, setGlobalModelsLoaded] = useState(false);
   const [faceDetected, setFaceDetected] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
@@ -852,11 +847,8 @@ const EmployeeManagement = () => {
       toast.error('Position and department are required');
       return;
     }
-    if (faceRegistrationEnabled) {
-      setCurrentStep(2);
-    } else {
-      handleCreateEmployee();
-    }
+    // Face registration is now COMPULSORY - always go to step 2
+    setCurrentStep(2);
   };
 
   const handleCreateEmployee = async () => {
