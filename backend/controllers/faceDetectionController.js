@@ -6,7 +6,6 @@ import Attendance from '../models/Attendance.js';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs/promises';
-import FormData from 'form-data';
 
 const FACE_SERVICE_URL = process.env.FACE_SERVICE_URL || 'http://localhost:8000';
 
@@ -39,12 +38,11 @@ export const upload = multer({
   }
 });
 
-async function callFaceService(endpoint, formData, headers = {}) {
+async function callFaceService(endpoint, formData) {
   try {
     const response = await fetch(`${FACE_SERVICE_URL}${endpoint}`, {
       method: 'POST',
-      body: formData,
-      ...headers
+      body: formData
     });
     
     if (!response.ok) {
@@ -103,10 +101,7 @@ export const saveEmployeeFace = async (req, res) => {
 
     const imageBuffer = await fs.readFile(req.file.path);
     const formData = new FormData();
-    formData.append('file', imageBuffer, {
-      filename: req.file.filename,
-      contentType: req.file.mimetype
-    });
+    formData.append('file', new Blob([imageBuffer], { type: req.file.mimetype }), req.file.filename);
 
     let faceResult;
     try {
@@ -256,10 +251,7 @@ export const verifyFaceAttendance = async (req, res) => {
 
     const imageBuffer = await fs.readFile(req.file.path);
     const formData = new FormData();
-    formData.append('file', imageBuffer, {
-      filename: req.file.filename,
-      contentType: req.file.mimetype
-    });
+    formData.append('file', new Blob([imageBuffer], { type: req.file.mimetype }), req.file.filename);
     formData.append('stored_embedding', JSON.stringify(storedDescriptor));
 
     let verifyResult;
@@ -412,10 +404,7 @@ export const detectFaces = async (req, res) => {
 
     const imageBuffer = await fs.readFile(req.file.path);
     const formData = new FormData();
-    formData.append('file', imageBuffer, {
-      filename: req.file.filename,
-      contentType: req.file.mimetype
-    });
+    formData.append('file', new Blob([imageBuffer], { type: req.file.mimetype }), req.file.filename);
 
     let faceResult;
     try {

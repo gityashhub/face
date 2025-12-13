@@ -99,8 +99,8 @@ async def detect_faces(file: UploadFile = File(...)):
             face_data = FaceData(
                 bbox=face.bbox.tolist(),
                 embedding=face.embedding.tolist(),
-                age=int(face.age) if hasattr(face, 'age') else None,
-                gender="M" if face.gender == 1 else "F" if hasattr(face, 'gender') else None,
+                age=int(face.age) if hasattr(face, 'age') and face.age is not None else None,
+                gender="M" if hasattr(face, 'gender') and face.gender == 1 else "F" if hasattr(face, 'gender') and face.gender is not None else None,
                 confidence=float(face.det_score)
             )
             face_data_list.append(face_data)
@@ -125,8 +125,8 @@ async def detect_faces_base64(image: str = Form(...)):
             face_data = FaceData(
                 bbox=face.bbox.tolist(),
                 embedding=face.embedding.tolist(),
-                age=int(face.age) if hasattr(face, 'age') else None,
-                gender="M" if face.gender == 1 else "F" if hasattr(face, 'gender') else None,
+                age=int(face.age) if hasattr(face, 'age') and face.age is not None else None,
+                gender="M" if hasattr(face, 'gender') and face.gender == 1 else "F" if hasattr(face, 'gender') and face.gender is not None else None,
                 confidence=float(face.det_score)
             )
             face_data_list.append(face_data)
