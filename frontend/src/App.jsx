@@ -23,15 +23,18 @@ import ProblemStatementPage from './pages/Employee/ProblemStatementPage';
 import SalesPage from './pages/Employee/Sales';
 import AdminSalesDashboard from './pages/Admin/AdminSalesDashboard';
 import PurchaseOrders from './pages/Admin/PurchaseOrders';
+import AdminProfile from './pages/Admin/AdminProfile';
+import AdminSettings from './pages/Admin/AdminSettings';
+import EmployeeProfile from './pages/Employee/EmployeeProfile';
+import EmployeeSettings from './pages/Employee/EmployeeSettings';
+
 function App() {
 
 useEffect(() => {
   const loadFaceModels = async () => {
     try {
-      // Setup TensorFlow.js backend - try WebGL first, then CPU
       const tf = faceapi.tf;
       if (tf) {
-        // Get available backends
         const backends = ['webgl', 'cpu'];
         let backendSet = false;
         
@@ -63,6 +66,7 @@ useEffect(() => {
 
   loadFaceModels();
 }, []);
+
   return (
     <div className="App">
       <Router>
@@ -98,50 +102,14 @@ useEffect(() => {
               <DepartmentManagementPage/>
             </ProtectedRoute>
           } />
-           <Route path="/admin/tasks" element={
+          <Route path="/admin/tasks" element={
             <ProtectedRoute role="admin">
               <AdminTaskManagement/>
             </ProtectedRoute>
           } />
-         
-           <Route path="/admin/face-registration" element={
+          <Route path="/admin/face-registration" element={
             <ProtectedRoute role="admin">
               <AdminFaceRegistration/>
-            </ProtectedRoute>
-          } />
-          
-          
-          {/* Employee Routes */}
-          <Route path="/employee/dashboard" element={
-            <ProtectedRoute role="employee">
-              <EmployeeDashboard />
-            </ProtectedRoute>
-          } />
-           <Route path="/employee/leaves" element={
-            <ProtectedRoute role="employee">
-              <EmployeeLeaveRequests />
-            </ProtectedRoute>
-          } />
-             <Route path="/employee/attendance" element={
-            <ProtectedRoute role="employee">
-              <EmployeeAttendance/>
-            </ProtectedRoute>
-          } />
-       
-           <Route path="/employee/tasks" element={
-            <ProtectedRoute role="employee">
-              <EmployeeTasks />
-            </ProtectedRoute>
-          } />
-          <Route path="/employee/leads" element={
-            <ProtectedRoute role="employee">
-              <LeadManagement/>
-            </ProtectedRoute>
-          } />
-<Route path="/employee/problems" element={<ProtectedRoute requiredRole="employee"><ProblemStatementPage /></ProtectedRoute>} />
-          <Route path="/employee/sales" element={
-            <ProtectedRoute role="employee">
-              <SalesPage />
             </ProtectedRoute>
           } />
           <Route path="/admin/sales" element={
@@ -152,6 +120,63 @@ useEffect(() => {
           <Route path="/admin/purchase-orders" element={
             <ProtectedRoute role="admin">
               <PurchaseOrders />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/profile" element={
+            <ProtectedRoute role="admin">
+              <AdminProfile />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/settings" element={
+            <ProtectedRoute role="admin">
+              <AdminSettings />
+            </ProtectedRoute>
+          } />
+          
+          {/* Employee Routes */}
+          <Route path="/employee/dashboard" element={
+            <ProtectedRoute role="employee">
+              <EmployeeDashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/employee/leaves" element={
+            <ProtectedRoute role="employee">
+              <EmployeeLeaveRequests />
+            </ProtectedRoute>
+          } />
+          <Route path="/employee/attendance" element={
+            <ProtectedRoute role="employee">
+              <EmployeeAttendance/>
+            </ProtectedRoute>
+          } />
+          <Route path="/employee/tasks" element={
+            <ProtectedRoute role="employee">
+              <EmployeeTasks />
+            </ProtectedRoute>
+          } />
+          <Route path="/employee/leads" element={
+            <ProtectedRoute role="employee">
+              <LeadManagement/>
+            </ProtectedRoute>
+          } />
+          <Route path="/employee/problems" element={
+            <ProtectedRoute role="employee">
+              <ProblemStatementPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/employee/sales" element={
+            <ProtectedRoute role="employee">
+              <SalesPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/employee/profile" element={
+            <ProtectedRoute role="employee">
+              <EmployeeProfile />
+            </ProtectedRoute>
+          } />
+          <Route path="/employee/settings" element={
+            <ProtectedRoute role="employee">
+              <EmployeeSettings />
             </ProtectedRoute>
           } />
         </Routes>

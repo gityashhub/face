@@ -228,20 +228,20 @@ const sidebarItems = [
                         Profile Information
                       </Link>
                       <Link
-                        to="/employee/bank-info"
+                        to="/employee/settings"
                         className="flex items-center px-4 py-2 text-sm text-secondary-300 hover:text-white hover:bg-secondary-700/50"
                         onClick={() => setProfileDropdown(false)}
                       >
-                        <CreditCard className="w-4 h-4 mr-3" />
-                        Bank Information
+                        <Settings className="w-4 h-4 mr-3" />
+                        Settings
                       </Link>
                       <Link
-                        to="/employee/contact"
+                        to="/employee/attendance"
                         className="flex items-center px-4 py-2 text-sm text-secondary-300 hover:text-white hover:bg-secondary-700/50"
                         onClick={() => setProfileDropdown(false)}
                       >
-                        <Phone className="w-4 h-4 mr-3" />
-                        Contact Details
+                        <Clock className="w-4 h-4 mr-3" />
+                        My Attendance
                       </Link>
                       <hr className="my-2 border-secondary-600" />
                       <button

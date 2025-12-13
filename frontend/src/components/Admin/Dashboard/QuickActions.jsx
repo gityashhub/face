@@ -1,8 +1,10 @@
-// components/Dashboard/QuickActions.js
 import React from 'react';
-import { Users, Calendar, TrendingUp, Award, Settings, FileText, Clock, Building2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Users, Calendar, Award, Clock, Building2, DollarSign, FileText, UserCheck } from 'lucide-react';
 
 const QuickActions = ({ userRole = 'admin' }) => {
+  const navigate = useNavigate();
+
   const adminActions = [
     {
       icon: Users,
@@ -19,32 +21,18 @@ const QuickActions = ({ userRole = 'admin' }) => {
       description: 'Review and approve leave requests'
     },
     {
-      icon: TrendingUp,
-      label: 'View Reports',
-      href: '/admin/reports',
-      color: 'neon-pink',
-      description: 'Analyze performance and attendance'
-    },
-    {
       icon: Award,
       label: 'Task Management',
       href: '/admin/tasks',
-      color: 'neon-purple',
+      color: 'neon-pink',
       description: 'Assign and track tasks'
     },
     {
       icon: Building2,
       label: 'Departments',
       href: '/admin/department',
-      color: 'neon-pink',
-      description: 'Manage company departments'
-    },
-    {
-      icon: Settings,
-      label: 'System Settings',
-      href: '/admin/settings',
       color: 'neon-purple',
-      description: 'Configure system preferences'
+      description: 'Manage company departments'
     },
     {
       icon: Clock,
@@ -54,11 +42,25 @@ const QuickActions = ({ userRole = 'admin' }) => {
       description: 'Monitor employee attendance'
     },
     {
-      icon: FileText,
-      label: 'Documents',
-      href: '/admin/documents',
+      icon: UserCheck,
+      label: 'Face Registration',
+      href: '/admin/face-registration',
       color: 'neon-purple',
-      description: 'Manage company documents'
+      description: 'Register employee faces'
+    },
+    {
+      icon: DollarSign,
+      label: 'Sales Dashboard',
+      href: '/admin/sales',
+      color: 'neon-pink',
+      description: 'View sales performance'
+    },
+    {
+      icon: FileText,
+      label: 'Purchase Orders',
+      href: '/admin/purchase-orders',
+      color: 'neon-purple',
+      description: 'Manage purchase orders'
     }
   ];
 
@@ -73,7 +75,7 @@ const QuickActions = ({ userRole = 'admin' }) => {
     {
       icon: Calendar,
       label: 'Apply for Leave',
-      href: '/employee/leave',
+      href: '/employee/leaves',
       color: 'neon-purple',
       description: 'Submit leave applications'
     },
@@ -85,21 +87,19 @@ const QuickActions = ({ userRole = 'admin' }) => {
       description: 'View assigned tasks'
     },
     {
-      icon: TrendingUp,
-      label: 'My Reports',
-      href: '/employee/reports',
+      icon: DollarSign,
+      label: 'Sales',
+      href: '/employee/sales',
       color: 'neon-purple',
-      description: 'View your performance'
+      description: 'View your sales'
     }
   ];
 
   const actions = userRole === 'admin' ? adminActions : employeeActions;
   const visibleActions = actions.slice(0, userRole === 'admin' ? 8 : 4);
 
-  const handleActionClick = (href, event) => {
-    event.preventDefault();
-    // You can add custom navigation logic here
-    window.location.href = href;
+  const handleActionClick = (href) => {
+    navigate(href);
   };
 
   return (
@@ -121,37 +121,26 @@ const QuickActions = ({ userRole = 'admin' }) => {
         {visibleActions.map((action, index) => (
           <button
             key={index}
-            onClick={(e) => handleActionClick(action.href, e)}
-            className={`p-4 rounded-lg border-2 border-dashed border-secondary-600 hover:border-${action.color}/50 hover:bg-${action.color}/5 transition-all duration-300 group relative overflow-hidden`}
+            onClick={() => handleActionClick(action.href)}
+            className="p-4 rounded-lg border-2 border-dashed border-secondary-600 hover:border-neon-pink/50 hover:bg-neon-pink/5 transition-all duration-300 group relative overflow-hidden"
             title={action.description}
           >
-            {/* Background glow effect */}
-            <div className={`absolute inset-0 bg-gradient-to-r from-${action.color}/0 via-${action.color}/5 to-${action.color}/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-neon-pink/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             
-            {/* Content */}
             <div className="relative z-10">
-              <action.icon className={`w-8 h-8 text-secondary-400 group-hover:text-${action.color} mx-auto mb-2 transition-all duration-300 group-hover:scale-110`} />
+              <action.icon className="w-8 h-8 text-secondary-400 group-hover:text-neon-pink mx-auto mb-2 transition-all duration-300 group-hover:scale-110" />
               <p className="text-sm text-secondary-400 group-hover:text-white transition-colors duration-300 leading-tight">
                 {action.label}
               </p>
             </div>
 
-            {/* Hover tooltip */}
-            <div className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap z-20`}>
+            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap z-20">
               {action.description}
               <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
             </div>
           </button>
         ))}
       </div>
-
-      {userRole === 'admin' && actions.length > 8 && (
-        <div className="mt-6 text-center">
-          <button className="text-neon-purple hover:text-white transition-colors duration-300 text-sm font-medium">
-            View More Actions →
-          </button>
-        </div>
-      )}
     </div>
   );
 };
