@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import EmployeeLayout from '../../components/Employee/EmployeeLayout/EmployeeLayout';
-import * as faceapi from 'face-api.js';
 import {
   Clock,
   MapPin,
@@ -10,12 +9,12 @@ import {
   Timer,
   TrendingUp,
   Camera,
-  Scan,
   ShieldCheck,
   X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { attendanceAPI, geolocationUtils, OFFICE_LOCATION } from '../../utils/attendanceAPI';
+import { faceAPI, cameraHelper } from '../../utils/faceAPI';
 
 const EmployeeAttendance = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -31,37 +30,28 @@ const EmployeeAttendance = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [realTimeWorkingTime, setRealTimeWorkingTime] = useState(0);
 
-  // Face verification states
   const [showFaceVerification, setShowFaceVerification] = useState(false);
-  const [modelsLoaded, setModelsLoaded] = useState(false);
-  const [faceDetected, setFaceDetected] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [capturedDescriptor, setCapturedDescriptor] = useState(null);
   const [verificationStatus, setVerificationStatus] = useState(null);
   
   const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  const streamRef = useRef(null);
-  const detectionIntervalRef = useRef(null);
+  const localCameraHelper = useRef(null);
 
-  // Time update
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch attendance data
   useEffect(() => {
     fetchTodayAttendance();
     fetchAttendanceHistory();
   }, []);
 
-  // Get location
   useEffect(() => {
     getCurrentLocation();
   }, []);
 
-  // Real-time working time counter
   useEffect(() => {
     let interval;
     if (hasCheckedIn && !hasCheckedOut && todayAttendance?.checkInTime) {
@@ -78,132 +68,31 @@ const EmployeeAttendance = () => {
     return () => clearInterval(interval);
   }, [hasCheckedIn, hasCheckedOut, todayAttendance]);
 
-  // Load face-api models on mount
-  useEffect(() => {
-    const loadModels = async () => {
-      try {
-        // Check if already loaded
-        if (faceapi.nets.tinyFaceDetector.isLoaded && 
-            faceapi.nets.faceLandmark68Net.isLoaded && 
-            faceapi.nets.faceRecognitionNet.isLoaded) {
-          setModelsLoaded(true);
-          console.log('Face models already available');
-          return;
-        }
-
-        const MODEL_URL = '/models';
-        await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-        ]);
-        setModelsLoaded(true);
-        console.log('Face detection models loaded');
-      } catch (error) {
-        console.error('Error loading face models:', error);
-        toast.error('Failed to load face detection models');
-      }
-    };
-    loadModels();
-  }, []);
-
-  // Start camera for face verification
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { 
-          facingMode: 'user',
-          width: { ideal: 640 },
-          height: { ideal: 480 }
-        }
-      });
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        streamRef.current = stream;
-        
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current.play();
-          startFaceDetection();
-        };
+      if (!localCameraHelper.current) {
+        const { CameraHelper } = await import('../../utils/faceAPI');
+        localCameraHelper.current = new CameraHelper();
       }
+      
+      await localCameraHelper.current.startCamera(videoRef.current);
+      setCameraReady(true);
     } catch (error) {
       console.error('Camera error:', error);
-      toast.error('Failed to access camera. Please allow camera permissions.');
+      toast.error(error.message || 'Failed to access camera');
     }
   };
 
-  // Stop camera
   const stopCamera = useCallback(() => {
-    if (detectionIntervalRef.current) {
-      clearInterval(detectionIntervalRef.current);
-      detectionIntervalRef.current = null;
+    if (localCameraHelper.current) {
+      localCameraHelper.current.stopCamera();
     }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-    setFaceDetected(false);
+    setCameraReady(false);
   }, []);
 
-  // Start real-time face detection
-  const startFaceDetection = () => {
-    if (detectionIntervalRef.current) {
-      clearInterval(detectionIntervalRef.current);
-    }
-
-    detectionIntervalRef.current = setInterval(async () => {
-      if (videoRef.current && canvasRef.current && modelsLoaded) {
-        const video = videoRef.current;
-        const canvas = canvasRef.current;
-        
-        if (video.readyState !== 4) return;
-
-        const displaySize = { width: video.videoWidth, height: video.videoHeight };
-        faceapi.matchDimensions(canvas, displaySize);
-
-        try {
-          const detection = await faceapi
-            .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
-            .withFaceLandmarks();
-
-          const ctx = canvas.getContext('2d');
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-          if (detection) {
-            setFaceDetected(true);
-            const resizedDetection = faceapi.resizeResults(detection, displaySize);
-            
-            // Draw face box
-            const box = resizedDetection.detection.box;
-            ctx.strokeStyle = '#00ff00';
-            ctx.lineWidth = 3;
-            ctx.strokeRect(box.x, box.y, box.width, box.height);
-            
-            // Draw landmarks
-            ctx.fillStyle = '#00ff00';
-            resizedDetection.landmarks.positions.forEach(point => {
-              ctx.beginPath();
-              ctx.arc(point.x, point.y, 2, 0, 2 * Math.PI);
-              ctx.fill();
-            });
-          } else {
-            setFaceDetected(false);
-          }
-        } catch (error) {
-          console.error('Detection error:', error);
-        }
-      }
-    }, 150);
-  };
-
-  // Capture face and verify
   const captureFaceForVerification = async () => {
-    if (!faceDetected || !videoRef.current || !modelsLoaded) {
-      toast.error('No face detected. Please position your face in the camera.');
+    if (!cameraReady || !videoRef.current) {
+      toast.error('Camera not ready. Please wait.');
       return;
     }
 
@@ -211,41 +100,37 @@ const EmployeeAttendance = () => {
     setVerificationStatus(null);
 
     try {
-      const video = videoRef.current;
+      const imageBlob = await localCameraHelper.current.captureImageBlob(videoRef.current);
       
-      // Get face descriptor
-      const detection = await faceapi
-        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 }))
-        .withFaceLandmarks()
-        .withFaceDescriptor();
-
-      if (!detection) {
-        toast.error('Could not capture face. Please try again.');
+      if (!imageBlob) {
+        toast.error('Failed to capture image. Please try again.');
         setIsVerifying(false);
         return;
       }
 
-      const descriptor = Array.from(detection.descriptor);
-      setCapturedDescriptor(descriptor);
-      
-      // Now call the API to check in with face verification
-      const response = await attendanceAPI.checkInWithFace(
-        { descriptor },
-        currentLocation
-      );
+      const response = await faceAPI.verifyFaceAttendance(imageBlob, currentLocation);
 
       if (response.data.success) {
         setVerificationStatus('success');
-        toast.success('Face verified! Attendance marked successfully.');
-        setTodayAttendance(response.data.data);
-        setHasCheckedIn(true);
-        setHasCheckedOut(false);
-        fetchAttendanceHistory();
+        toast.success('Face verified! Now marking attendance...');
         
-        // Close modal after success
-        setTimeout(() => {
-          closeFaceVerification();
-        }, 1500);
+        const checkInResponse = await attendanceAPI.checkIn({
+          notes: 'Check-in via web with face verification'
+        });
+
+        if (checkInResponse.data.success) {
+          toast.success('Attendance marked successfully!');
+          setTodayAttendance(checkInResponse.data.data);
+          setHasCheckedIn(true);
+          setHasCheckedOut(false);
+          fetchAttendanceHistory();
+          
+          setTimeout(() => {
+            closeFaceVerification();
+          }, 1500);
+        } else {
+          toast.error(checkInResponse.data.message || 'Failed to mark attendance');
+        }
       } else {
         setVerificationStatus('failed');
         toast.error(response.data.message || 'Face verification failed');
@@ -253,8 +138,6 @@ const EmployeeAttendance = () => {
     } catch (error) {
       console.error('Face verification error:', error);
       setVerificationStatus('failed');
-      
-      // Extract error message
       const errorMsg = error.response?.data?.message || error.message || 'Face verification failed';
       toast.error(errorMsg);
     } finally {
@@ -262,7 +145,6 @@ const EmployeeAttendance = () => {
     }
   };
 
-  // Open face verification modal
   const openFaceVerification = () => {
     if (!currentLocation) {
       toast.error('Location is required. Please enable location services.');
@@ -281,21 +163,17 @@ const EmployeeAttendance = () => {
     }
 
     setShowFaceVerification(true);
-    setCapturedDescriptor(null);
     setVerificationStatus(null);
     startCamera();
   };
 
-  // Close face verification modal
   const closeFaceVerification = () => {
     stopCamera();
     setShowFaceVerification(false);
-    setCapturedDescriptor(null);
     setVerificationStatus(null);
-    setFaceDetected(false);
+    setCameraReady(false);
   };
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       stopCamera();
@@ -423,7 +301,6 @@ const EmployeeAttendance = () => {
   return (
     <EmployeeLayout>
       <div className="max-w-screen-lg mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-        {/* Header */}
         <div className="glass-morphism neon-border rounded-2xl p-4 md:p-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
@@ -441,7 +318,6 @@ const EmployeeAttendance = () => {
           </div>
         </div>
 
-        {/* Today's Attendance Card */}
         <div className="glass-morphism neon-border rounded-2xl p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-white">Today's Attendance</h2>
@@ -454,9 +330,7 @@ const EmployeeAttendance = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Check In/Out Section */}
             <div className="space-y-4">
-              {/* Location Status */}
               <div className="flex items-center space-x-3 p-3 bg-secondary-800/30 rounded-lg">
                 <MapPin className={`w-5 h-5 ${currentLocation ? 'text-green-400' : 'text-red-400'}`} />
                 <div className="flex-1">
@@ -477,7 +351,6 @@ const EmployeeAttendance = () => {
                 )}
               </div>
 
-              {/* Action Buttons */}
               <div className="space-y-3">
                 {!hasCheckedIn ? (
                   <button
@@ -505,7 +378,6 @@ const EmployeeAttendance = () => {
                 )}
               </div>
 
-              {/* Security Notice */}
               <div className="p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg">
                 <div className="flex items-start space-x-2">
                   <ShieldCheck className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
@@ -517,7 +389,6 @@ const EmployeeAttendance = () => {
               </div>
             </div>
 
-            {/* Attendance Info */}
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-3 bg-secondary-800/30 rounded-lg text-center">
@@ -551,7 +422,6 @@ const EmployeeAttendance = () => {
           </div>
         </div>
 
-        {/* Attendance Statistics */}
         {attendanceStats && (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
             <div className="glass-morphism neon-border rounded-2xl p-4 md:p-6">
@@ -593,162 +463,122 @@ const EmployeeAttendance = () => {
           </div>
         )}
 
-        {/* Attendance History */}
-        <div className="glass-morphism neon-border rounded-2xl p-4 md:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-            <h2 className="text-lg md:text-xl font-bold text-white">Attendance History</h2>
-            <div className="flex items-center gap-4">
-              <input
-                type="month"
-                value={selectedMonth}
-                onChange={(e) => {
-                  setSelectedMonth(e.target.value);
-                  setTimeout(fetchAttendanceHistory, 100);
-                }}
-                className="px-3 py-2 bg-secondary-800 border border-secondary-600 rounded-lg text-white text-sm focus:outline-none focus:border-neon-pink w-full sm:w-auto"
-              />
+        <div className="glass-morphism neon-border rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-white">Attendance History</h2>
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => {
+                setSelectedMonth(e.target.value);
+                setTimeout(fetchAttendanceHistory, 100);
+              }}
+              className="bg-secondary-800 text-white border border-secondary-600 rounded-lg px-3 py-2 text-sm"
+            />
+          </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neon-pink"></div>
             </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-secondary-600">
-                  <th className="pb-3 text-secondary-400 font-medium text-xs md:text-sm">Date</th>
-                  <th className="pb-3 text-secondary-400 font-medium text-xs md:text-sm">Check In</th>
-                  <th className="pb-3 text-secondary-400 font-medium text-xs md:text-sm">Check Out</th>
-                  <th className="pb-3 text-secondary-400 font-medium text-xs md:text-sm">Working Time</th>
-                  <th className="pb-3 text-secondary-400 font-medium text-xs md:text-sm">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-secondary-700">
-                {loading ? (
-                  <tr><td colSpan="5" className="py-8 text-center text-secondary-400">Loading...</td></tr>
-                ) : attendanceHistory.length === 0 ? (
-                  <tr><td colSpan="5" className="py-8 text-center text-secondary-400">No records found</td></tr>
-                ) : (
-                  attendanceHistory.map((record) => (
-                    <tr key={record._id} className="hover:bg-secondary-800/20">
-                      <td className="py-3 text-white text-sm md:text-base">{formatDate(record.date)}</td>
-                      <td className="py-3 text-white text-sm md:text-base">{formatTime(record.checkInTime)}</td>
-                      <td className="py-3 text-white text-sm md:text-base">{formatTime(record.checkOutTime)}</td>
-                      <td className="py-3 text-neon-pink font-medium text-sm md:text-base">{formatWorkingTime(record.workingHours)}</td>
-                      <td className="py-3">
-                        <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(record.status)}`}>
-                          {record.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          ) : attendanceHistory.length === 0 ? (
+            <div className="text-center py-8 text-secondary-400">
+              <Clock className="w-12 h-12 mx-auto mb-2 opacity-50" />
+              <p>No attendance records for this month</p>
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {attendanceHistory.map((record) => (
+                <div key={record._id} className="flex items-center justify-between p-3 bg-secondary-800/30 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <div className="text-center">
+                      <p className="text-white font-medium">{formatDate(record.date)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-4 text-sm">
+                    <div className="text-center">
+                      <p className="text-secondary-400 text-xs">In</p>
+                      <p className="text-white">{formatTime(record.checkInTime)}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-secondary-400 text-xs">Out</p>
+                      <p className="text-white">{formatTime(record.checkOutTime)}</p>
+                    </div>
+                    <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(record.status)}`}>
+                      {record.status || 'Present'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Face Verification Modal */}
       {showFaceVerification && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[10000] p-4">
-          <div className="bg-gray-900 neon-border rounded-2xl p-6 w-full max-w-lg">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="glass-morphism neon-border rounded-2xl p-6 max-w-lg w-full">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-white flex items-center space-x-2">
-                <Scan className="w-6 h-6 text-neon-pink" />
-                <span>Face Verification</span>
-              </h3>
+              <h3 className="text-xl font-bold text-white">Face Verification</h3>
               <button
                 onClick={closeFaceVerification}
-                className="text-secondary-400 hover:text-white transition-colors"
+                className="p-2 hover:bg-secondary-700 rounded-lg transition-colors"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5 text-white" />
               </button>
             </div>
 
-            <div className="space-y-4">
-              {/* Camera Feed */}
-              <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
-                <video
-                  ref={videoRef}
-                  className="w-full h-full object-cover"
-                  autoPlay
-                  muted
-                  playsInline
-                />
-                <canvas
-                  ref={canvasRef}
-                  className="absolute top-0 left-0 w-full h-full"
-                />
-                
-                {!modelsLoaded && (
-                  <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
-                    <div className="text-center text-white">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neon-pink mx-auto mb-2"></div>
-                      <p className="text-sm">Loading face detection...</p>
-                    </div>
+            <div className="relative bg-black rounded-lg overflow-hidden mb-4">
+              <video
+                ref={videoRef}
+                autoPlay
+                muted
+                playsInline
+                className="w-full"
+                style={{ transform: 'scaleX(-1)' }}
+              />
+              
+              {!cameraReady && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                  <div className="text-white text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neon-pink mx-auto mb-2"></div>
+                    <p>Starting camera...</p>
                   </div>
-                )}
-
-                {verificationStatus === 'success' && (
-                  <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center">
-                    <div className="text-center">
-                      <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-2" />
-                      <p className="text-green-400 font-bold text-lg">Verified!</p>
-                    </div>
-                  </div>
-                )}
-
-                {verificationStatus === 'failed' && (
-                  <div className="absolute inset-0 bg-red-500/20 flex items-center justify-center">
-                    <div className="text-center">
-                      <XCircle className="w-16 h-16 text-red-400 mx-auto mb-2" />
-                      <p className="text-red-400 font-bold text-lg">Verification Failed</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Status Indicator */}
-              <div className="flex items-center justify-between p-3 bg-secondary-800/50 rounded-lg">
-                <div className="flex items-center space-x-2">
-                  <div className={`w-3 h-3 rounded-full ${faceDetected ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
-                  <span className="text-sm text-secondary-300">
-                    {faceDetected ? 'Face detected - Ready to verify' : 'Position your face in the camera'}
-                  </span>
                 </div>
-              </div>
+              )}
 
-              {/* Instructions */}
-              <div className="text-center text-secondary-400 text-sm">
-                <p>Look directly at the camera and click "Verify & Check In" when ready.</p>
-                <p className="text-xs mt-1">Your face will be matched against your registered profile.</p>
-              </div>
+              {verificationStatus === 'success' && (
+                <div className="absolute inset-0 flex items-center justify-center bg-green-500/50">
+                  <CheckCircle className="w-16 h-16 text-white" />
+                </div>
+              )}
 
-              {/* Action Buttons */}
-              <div className="flex space-x-3">
-                <button
-                  onClick={closeFaceVerification}
-                  className="flex-1 px-4 py-3 border border-secondary-600 text-secondary-300 rounded-lg hover:bg-secondary-700/50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={captureFaceForVerification}
-                  disabled={!faceDetected || isVerifying || verificationStatus === 'success'}
-                  className="flex-1 px-4 py-3 bg-gradient-to-r from-neon-pink to-neon-purple text-white font-semibold rounded-lg hover-glow transition-all duration-300 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isVerifying ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>Verifying...</span>
-                    </>
-                  ) : (
-                    <>
-                      <ShieldCheck className="w-5 h-5" />
-                      <span>Verify & Check In</span>
-                    </>
-                  )}
-                </button>
-              </div>
+              {verificationStatus === 'failed' && (
+                <div className="absolute inset-0 flex items-center justify-center bg-red-500/50">
+                  <XCircle className="w-16 h-16 text-white" />
+                </div>
+              )}
             </div>
+
+            <div className="flex items-center space-x-2 mb-4 p-3 bg-secondary-800/50 rounded-lg">
+              <div className={`w-3 h-3 rounded-full ${cameraReady ? 'bg-green-400' : 'bg-yellow-400'} animate-pulse`}></div>
+              <span className="text-sm text-secondary-400">
+                {cameraReady ? 'Camera ready - Position your face and click Verify' : 'Starting camera...'}
+              </span>
+            </div>
+
+            <button
+              onClick={captureFaceForVerification}
+              disabled={!cameraReady || isVerifying}
+              className="w-full px-6 py-3 bg-gradient-to-r from-neon-purple to-neon-pink text-white font-semibold rounded-lg hover-glow transition-all duration-300 flex items-center justify-center space-x-2 disabled:opacity-50"
+            >
+              <Camera className="w-5 h-5" />
+              <span>{isVerifying ? 'Verifying...' : 'Verify Face & Check In'}</span>
+            </button>
+
+            <p className="text-xs text-secondary-400 mt-2 text-center">
+              Face verification is processed server-side for accuracy
+            </p>
           </div>
         </div>
       )}

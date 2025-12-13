@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { employeeAPI, departmentAPI } from '../../utils/api';
 import AdminLayout from '../../components/Admin/layout/AdminLayout';
-import * as faceapi from 'face-api.js';
+import { faceAPI, cameraHelper } from '../../utils/faceAPI';
 import {
   Plus,
   Search,
@@ -615,43 +615,38 @@ const EmployeeManagement = () => {
     const intervalId = setInterval(async () => {
       if (videoRef.current && videoRef.current.readyState >= 2 && canvasRef.current) {
         try {
-          const options = new faceapi.TinyFaceDetectorOptions({
-            inputSize: 320,
-            scoreThreshold: 0.05
-          });
-          const detections = await faceapi
-            .detectAllFaces(videoRef.current, options)
-            .withFaceLandmarks()
-            .withFaceDescriptors();
+          const imageBlob = await cameraHelper.captureImageBlob(videoRef.current);
+          if (!imageBlob) return;
+          
+          const response = await faceAPI.detectFaces(imageBlob);
           const canvas = canvasRef.current;
           if (!canvas) return;
           const ctx = canvas.getContext('2d');
           if (!ctx) return;
           ctx.clearRect(0, 0, canvas.width, canvas.height);
-          if (detections && detections.length > 0) {
+          
+          if (response.data?.faces && response.data.faces.length > 0) {
             setFaceDetected(true);
-            detections.forEach((detection) => {
-              const box = detection.detection.box;
-              // ✅ Draw glowing hexagon
-              drawHexagon(ctx, box.x, box.y, box.width, box.height);
-              ctx.strokeStyle = '#ff0080';
-              ctx.lineWidth = 3;
-              ctx.stroke();
-              // Add glow effect
-              ctx.shadowColor = '#ff0080';
-              ctx.shadowBlur = 15;
-              ctx.stroke();
-              ctx.shadowBlur = 0;
-              // Optional: draw landmarks
-              const landmarks = detection.landmarks;
-              ctx.fillStyle = '#00ffaa';
-              const leftEye = landmarks.getLeftEye();
-              const rightEye = landmarks.getRightEye();
-              [...leftEye, ...rightEye].forEach(point => {
-                ctx.beginPath();
-                ctx.arc(point.x, point.y, 2, 0, Math.PI * 2);
-                ctx.fill();
-              });
+            response.data.faces.forEach((face) => {
+              const box = face.bbox;
+              if (box) {
+                const scaleX = canvas.width / (videoRef.current?.videoWidth || 640);
+                const scaleY = canvas.height / (videoRef.current?.videoHeight || 480);
+                const scaledBox = {
+                  x: box[0] * scaleX,
+                  y: box[1] * scaleY,
+                  width: (box[2] - box[0]) * scaleX,
+                  height: (box[3] - box[1]) * scaleY
+                };
+                drawHexagon(ctx, scaledBox.x, scaledBox.y, scaledBox.width, scaledBox.height);
+                ctx.strokeStyle = '#ff0080';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                ctx.shadowColor = '#ff0080';
+                ctx.shadowBlur = 15;
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+              }
             });
           } else {
             setFaceDetected(false);
@@ -661,7 +656,7 @@ const EmployeeManagement = () => {
           setFaceDetected(false);
         }
       }
-    }, 500);
+    }, 800);
     if (videoRef.current) {
       videoRef.current.detectionInterval = intervalId;
     }
@@ -679,60 +674,51 @@ const EmployeeManagement = () => {
     }
     setIsScanning(true);
     try {
-      const detections = await faceapi
-        .detectAllFaces(videoRef.current, new faceapi.TinyFaceDetectorOptions({
-          inputSize: 416,
-          scoreThreshold: 0.05
-        }))
-        .withFaceLandmarks()
-        .withFaceDescriptors();
-      if (!detections || detections.length === 0) {
+      const imageBlob = await cameraHelper.captureImageBlob(videoRef.current);
+      if (!imageBlob) {
+        toast.error('Failed to capture image. Please try again.');
+        return false;
+      }
+
+      const response = await faceAPI.detectFaces(imageBlob);
+      if (!response.data?.faces || response.data.faces.length === 0) {
         toast.error('No face detected. Please try again.');
         return false;
       }
-      const detection = detections[0];
-      const faceDescriptor = Array.from(detection.descriptor);
-      if (!Array.isArray(faceDescriptor) || faceDescriptor.length !== 128) {
+      
+      const face = response.data.faces[0];
+      const faceDescriptor = face.embedding;
+      if (!Array.isArray(faceDescriptor) || faceDescriptor.length !== 512) {
         toast.error('Invalid face descriptor. Please try again.');
         return false;
       }
-      const allNumbers = faceDescriptor.every(val => typeof val === 'number' && !isNaN(val));
-      if (!allNumbers) {
-        toast.error('Face descriptor contains invalid data. Please try again.');
-        return false;
-      }
-      // ✅ IMPROVED CROPPING: Full head with proper padding
+
       const video = videoRef.current;
-      const detectionBox = detection.detection.box;
-      const scaleX = video.videoWidth / video.offsetWidth;
-      const scaleY = video.videoHeight / video.offsetHeight;
-      const paddingRatio = 0.4; // 40% extra space
-      const boxWidth = detectionBox.width * scaleX;
-      const boxHeight = detectionBox.height * scaleY;
-      const paddingX = boxWidth * paddingRatio;
-      const paddingY = boxHeight * paddingRatio;
-      const cropX = Math.max(0, (detectionBox.x * scaleX) - paddingX);
-      const cropY = Math.max(0, (detectionBox.y * scaleY) - paddingY);
-      const cropWidth = Math.min(
-        video.videoWidth - cropX,
-        boxWidth + (paddingX * 2)
-      );
-      const cropHeight = Math.min(
-        video.videoHeight - cropY,
-        boxHeight + (paddingY * 2)
-      );
       const thumbCanvas = document.createElement('canvas');
       const thumbSize = 150;
       thumbCanvas.width = thumbSize;
       thumbCanvas.height = thumbSize;
       const ctx = thumbCanvas.getContext('2d');
-      ctx.drawImage(
-        video,
-        cropX, cropY, cropWidth, cropHeight,
-        0, 0, thumbSize, thumbSize
-      );
+      
+      if (face.bbox) {
+        const [x1, y1, x2, y2] = face.bbox;
+        const boxWidth = x2 - x1;
+        const boxHeight = y2 - y1;
+        const paddingRatio = 0.4;
+        const paddingX = boxWidth * paddingRatio;
+        const paddingY = boxHeight * paddingRatio;
+        const cropX = Math.max(0, x1 - paddingX);
+        const cropY = Math.max(0, y1 - paddingY);
+        const cropWidth = Math.min(video.videoWidth - cropX, boxWidth + (paddingX * 2));
+        const cropHeight = Math.min(video.videoHeight - cropY, boxHeight + (paddingY * 2));
+        ctx.drawImage(video, cropX, cropY, cropWidth, cropHeight, 0, 0, thumbSize, thumbSize);
+      } else {
+        ctx.drawImage(video, 0, 0, thumbSize, thumbSize);
+      }
+      
       const thumbnail = thumbCanvas.toDataURL('image/jpeg', 0.85);
-      const confidence = Math.round(detection.detection.score * 100);
+      const confidence = face.det_score ? Math.round(face.det_score * 100) : 90;
+      
       const faceData = {
         pose: POSES[currentPoseIndex].name,
         descriptor: faceDescriptor,
@@ -742,6 +728,7 @@ const EmployeeManagement = () => {
       setCapturedDescriptors(prev => [...prev, faceData]);
       setPosesCaptured(prev => [...prev, POSES[currentPoseIndex].name]);
       toast.success(`Pose "${POSES[currentPoseIndex].name}" captured successfully! (${posesCaptured.length + 1}/4)`);
+      
       if (posesCaptured.length + 1 >= 4) {
         const finalDescriptors = [...capturedDescriptors, faceData];
         const averageDescriptor = finalDescriptors[0].descriptor.map((_, i) =>
@@ -753,11 +740,11 @@ const EmployeeManagement = () => {
           thumbnail: finalDescriptors[0].thumbnail,
           confidence: Math.round(finalDescriptors.reduce((sum, fd) => sum + fd.confidence, 0) / finalDescriptors.length)
         });
-        toast.success('✅ All 4 poses captured! Face registration complete.');
+        toast.success('All 4 poses captured! Face registration complete.');
       }
       return true;
     } catch (error) {
-      console.error('❌ Error capturing face:', error);
+      console.error('Error capturing face:', error);
       toast.error('Failed to capture face data. Please try again.');
       return false;
     } finally {
@@ -775,7 +762,7 @@ const EmployeeManagement = () => {
           // Check multiple possible indicators of face registration
           const hasFaceRegistered =
             emp.hasFaceRegistered === true ||
-            (Array.isArray(emp.faceDescriptor) && emp.faceDescriptor.length === 128) ||
+            (Array.isArray(emp.faceDescriptor) && (emp.faceDescriptor.length === 128 || emp.faceDescriptor.length === 512)) ||
             !!emp.faceImage;
           return {
             ...emp,
@@ -794,48 +781,8 @@ const EmployeeManagement = () => {
 
   useEffect(() => {
     fetchEmployees();
+    setGlobalModelsLoaded(true); // No local model loading needed - using backend service
     return () => stopCamera();
-  }, []);
-
-  // Load face-api models with CPU backend fallback
-  useEffect(() => {
-    const loadFaceModels = async () => {
-      try {
-        // Setup TensorFlow.js backend - try WebGL first, then CPU
-        const tf = faceapi.tf;
-        if (tf) {
-          const backends = ['webgl', 'cpu'];
-          let backendSet = false;
-          
-          for (const backend of backends) {
-            if (backendSet) break;
-            try {
-              await tf.setBackend(backend);
-              await tf.ready();
-              console.log('TensorFlow.js backend:', tf.getBackend());
-              backendSet = true;
-            } catch (err) {
-              console.warn(`Backend ${backend} failed:`, err.message);
-            }
-          }
-          
-          if (!backendSet) {
-            console.warn('No TensorFlow.js backend available');
-          }
-        }
-
-        await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
-        await faceapi.nets.faceLandmark68Net.loadFromUri('/models');
-        await faceapi.nets.faceRecognitionNet.loadFromUri('/models');
-        console.log('Face models loaded successfully in EmployeeManagement');
-        setGlobalModelsLoaded(true);
-      } catch (error) {
-        console.error('Failed to load face models:', error);
-        toast.error('Failed to load face recognition models');
-      }
-    };
-
-    loadFaceModels();
   }, []);
 
   useEffect(() => {
