@@ -6,8 +6,10 @@ import Attendance from '../models/Attendance.js';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs/promises';
+import FormData from 'form-data';
 
-// -------------------- Multer config --------------------
+const FACE_SERVICE_URL = process.env.FACE_SERVICE_URL || 'http://localhost:8000';
+
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
     const uploadDir = 'uploads/faces';
@@ -26,7 +28,7 @@ const storage = multer.diskStorage({
 
 export const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png/;
     const mimetype = allowedTypes.test(file.mimetype);
@@ -37,28 +39,28 @@ export const upload = multer({
   }
 });
 
-// -------------------- Helper math functions --------------------
-
-// Euclidean distance for face descriptor vectors
-function calculateEuclideanDistance(descriptor1, descriptor2) {
-  if (!Array.isArray(descriptor1) || !Array.isArray(descriptor2) || descriptor1.length !== descriptor2.length) {
-    return NaN;
+async function callFaceService(endpoint, formData, headers = {}) {
+  try {
+    const response = await fetch(`${FACE_SERVICE_URL}${endpoint}`, {
+      method: 'POST',
+      body: formData,
+      ...headers
+    });
+    
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+      throw new Error(error.detail || `Face service error: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Face service call error:', error);
+    throw error;
   }
-
-  let sum = 0;
-  for (let i = 0; i < descriptor1.length; i++) {
-    const a = Number(descriptor1[i]);
-    const b = Number(descriptor2[i]);
-    if (Number.isNaN(a) || Number.isNaN(b)) return NaN;
-    const diff = a - b;
-    sum += diff * diff;
-  }
-  return Math.sqrt(sum);
 }
 
-// Haversine / geographic distance for coordinates (meters)
 function calculateGeoDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371e3; // meters
+  const R = 6371e3;
   const toRad = (deg) => (deg * Math.PI) / 180;
 
   const φ1 = toRad(lat1);
@@ -75,50 +77,8 @@ function calculateGeoDistance(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-// Compare face descriptors using Euclidean distance
-// VERY STRICT THRESHOLD: 0.4 for accurate face matching while avoiding false rejections
-// The Euclidean distance threshold determines how similar two faces must be:
-// - 0.0 = identical faces
-// - 0.4 = same person threshold (strict)
-// - 0.6 = too loose, allows different people
-// Minimum confidence of 70% required for a valid match
-const FACE_MATCH_THRESHOLD = 0.4;
-const MIN_CONFIDENCE_REQUIRED = 70;
-
-function compareFaceDescriptors(descriptor1, descriptor2, threshold = FACE_MATCH_THRESHOLD) {
-  if (!Array.isArray(descriptor1) || !Array.isArray(descriptor2)) {
-    console.log('Face comparison: Invalid descriptor arrays');
-    return { match: false, distance: Infinity, confidence: 0 };
-  }
-
-  if (descriptor1.length !== 128 || descriptor2.length !== 128) {
-    console.log(`Face comparison: Invalid descriptor length - got ${descriptor1.length} and ${descriptor2.length}`);
-    return { match: false, distance: Infinity, confidence: 0 };
-  }
-
-  const distance = calculateEuclideanDistance(descriptor1, descriptor2);
-  if (!Number.isFinite(distance)) {
-    console.log('Face comparison: Distance calculation returned non-finite value');
-    return { match: false, distance: Infinity, confidence: 0 };
-  }
-
-  // Calculate confidence as percentage (100% at distance 0, decreasing as distance increases)
-  // Using a more realistic scale where threshold distance = ~50% confidence
-  const confidence = Math.max(0, Math.min(100, Math.round((1 - (distance / 1.0)) * 100)));
-  
-  // Match requires BOTH:
-  // 1. Distance below threshold
-  // 2. Confidence above minimum required
-  const distanceMatch = distance < threshold;
-  const confidenceMatch = confidence >= MIN_CONFIDENCE_REQUIRED;
-  const match = distanceMatch && confidenceMatch;
-
-  console.log(`Face comparison: distance=${distance.toFixed(4)}, threshold=${threshold}, confidence=${confidence}%, match=${match}`);
-
-  return { match, distance, confidence };
-}
-
-// -------------------- Route handlers --------------------
+const FACE_MATCH_THRESHOLD = 1.0;
+const MIN_CONFIDENCE_REQUIRED = 50;
 
 // @desc    Save employee face data during registration
 // @route   POST /api/face-detection/save-face
@@ -126,104 +86,103 @@ function compareFaceDescriptors(descriptor1, descriptor2, threshold = FACE_MATCH
 export const saveEmployeeFace = async (req, res) => {
   try {
     const { employeeId } = req.body;
-    let { descriptor, landmarks } = req.body;
 
-    if (!employeeId || !descriptor) {
-      return res.status(400).json({ success: false, message: 'Employee ID and face descriptor are required' });
+    if (!employeeId) {
+      return res.status(400).json({ success: false, message: 'Employee ID is required' });
     }
 
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'Face image is required' });
     }
 
-    // Verify employee exists
     const employee = await Employee.findById(employeeId).populate('user');
     if (!employee) {
-      // remove uploaded file if employee missing
       try { await fs.unlink(req.file.path); } catch (_) {}
       return res.status(404).json({ success: false, message: 'Employee not found' });
     }
 
-    // Parse descriptor (may come as string in multipart/form-data)
-    let faceDescriptor;
+    const imageBuffer = await fs.readFile(req.file.path);
+    const formData = new FormData();
+    formData.append('file', imageBuffer, {
+      filename: req.file.filename,
+      contentType: req.file.mimetype
+    });
+
+    let faceResult;
     try {
-      if (typeof descriptor === 'string') {
-        faceDescriptor = JSON.parse(descriptor);
-      } else {
-        faceDescriptor = descriptor;
-      }
-
-      if (!Array.isArray(faceDescriptor)) throw new Error('Descriptor is not an array');
-
-      // Normalize values to numbers
-      faceDescriptor = faceDescriptor.map(x => {
-        const n = Number(x);
-        if (Number.isNaN(n)) throw new Error('Descriptor contains non-numeric value');
-        return n;
-      });
-
-      // You expected 128-length; if your model uses different size adjust here
-      if (faceDescriptor.length !== 128) {
-        throw new Error(`Descriptor length must be 128 (got ${faceDescriptor.length})`);
-      }
-    } catch (err) {
-      // cleanup uploaded file
+      faceResult = await callFaceService('/detect', formData);
+    } catch (error) {
       try { await fs.unlink(req.file.path); } catch (_) {}
-      return res.status(400).json({ success: false, message: 'Invalid face descriptor format', error: err.message });
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Face detection service error', 
+        error: error.message 
+      });
     }
 
-    // Parse landmarks if present
-    let parsedLandmarks = [];
-    try {
-      if (landmarks) {
-        if (typeof landmarks === 'string') parsedLandmarks = JSON.parse(landmarks);
-        else parsedLandmarks = landmarks;
-      }
-    } catch (err) {
-      // ignore landmarks parse error but warn
-      console.warn('Landmarks parse error:', err);
-      parsedLandmarks = [];
+    if (!faceResult.success || !faceResult.faces || faceResult.faces.length === 0) {
+      try { await fs.unlink(req.file.path); } catch (_) {}
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No face detected in the image. Please try again with a clear face photo.' 
+      });
     }
 
-    // Check if face data already exists for this employee
+    if (faceResult.faces.length > 1) {
+      try { await fs.unlink(req.file.path); } catch (_) {}
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Multiple faces detected. Please ensure only one person is in the photo.' 
+      });
+    }
+
+    const face = faceResult.faces[0];
+    const faceDescriptor = face.embedding;
+
+    if (!Array.isArray(faceDescriptor) || faceDescriptor.length !== 512) {
+      try { await fs.unlink(req.file.path); } catch (_) {}
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Invalid face embedding received from face service' 
+      });
+    }
+
     const existingFaceData = await FaceData.findOne({ employee: employeeId });
     if (existingFaceData) {
       existingFaceData.faceDescriptor = faceDescriptor;
-      existingFaceData.landmarks = parsedLandmarks;
+      existingFaceData.landmarks = [];
       existingFaceData.faceImageUrl = req.file.path;
       existingFaceData.lastUpdated = new Date();
+      existingFaceData.confidence = Math.round(face.confidence * 100);
       existingFaceData.metadata = {
         captureDevice: req.headers['user-agent'] || 'Unknown',
         captureEnvironment: 'Registration',
-        processingVersion: '1.0'
+        processingVersion: '2.0-InsightFace'
       };
 
       await existingFaceData.save();
-
       return res.json({ success: true, message: 'Face data updated successfully', data: existingFaceData });
     }
 
-    // Create new face data entry
     const faceData = new FaceData({
       employee: employeeId,
       user: employee.user._id,
       faceDescriptor,
-      landmarks: parsedLandmarks,
+      landmarks: [],
       faceImageUrl: req.file.path,
+      confidence: Math.round(face.confidence * 100),
       metadata: {
         captureDevice: req.headers['user-agent'] || 'Unknown',
         captureEnvironment: 'Registration',
-        processingVersion: '1.0'
+        processingVersion: '2.0-InsightFace'
       }
     });
 
     await faceData.save();
-
     res.status(201).json({ success: true, message: 'Face data saved successfully', data: faceData });
 
   } catch (error) {
     console.error('Save face data error:', error);
-    // Clean up uploaded file on error
     if (req.file && req.file.path) {
       try { await fs.unlink(req.file.path); } catch (unlinkError) { console.error('Error deleting file:', unlinkError); }
     }
@@ -243,7 +202,6 @@ export const getEmployeeFace = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Face data not found for this employee' });
     }
 
-    // Don't return full descriptor for security
     const responseData = {
       _id: faceData._id,
       employee: faceData.employee,
@@ -262,76 +220,90 @@ export const getEmployeeFace = async (req, res) => {
   }
 };
 
-// @desc    Verify face for attendance
+// @desc    Verify face for attendance using InsightFace
 // @route   POST /api/face-detection/verify-attendance
 // @access  Private (Employee)
 export const verifyFaceAttendance = async (req, res) => {
   try {
-    let { descriptor, location } = req.body;
+    const { location } = req.body;
 
-    if (!descriptor || !location) {
-      return res.status(400).json({ success: false, message: 'Face descriptor and location are required' });
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Face image is required' });
     }
 
-    // Parse incoming descriptor (string in multipart fallback)
-    let incomingDescriptor;
-    try {
-      if (typeof descriptor === 'string') incomingDescriptor = JSON.parse(descriptor);
-      else incomingDescriptor = descriptor;
-
-      // normalize to numbers
-      if (!Array.isArray(incomingDescriptor)) throw new Error('Descriptor not an array');
-      incomingDescriptor = incomingDescriptor.map(x => {
-        const n = Number(x);
-        if (Number.isNaN(n)) throw new Error('Descriptor contains non-numeric value');
-        return n;
-      });
-
-      if (incomingDescriptor.length !== 128) {
-        return res.status(400).json({ success: false, message: `Descriptor length must be 128 (got ${incomingDescriptor.length})` });
-      }
-    } catch (err) {
-      return res.status(400).json({ success: false, message: 'Invalid descriptor format', error: err.message });
+    if (!location || location.latitude === undefined || location.longitude === undefined) {
+      try { await fs.unlink(req.file.path); } catch (_) {}
+      return res.status(400).json({ success: false, message: 'Location is required' });
     }
 
-    // find current employee
     const employee = await Employee.findOne({ user: req.user.id });
     if (!employee) {
+      try { await fs.unlink(req.file.path); } catch (_) {}
       return res.status(404).json({ success: false, message: 'Employee record not found' });
     }
 
     const faceData = await FaceData.findByEmployee(employee._id);
     if (!faceData) {
+      try { await fs.unlink(req.file.path); } catch (_) {}
       return res.status(404).json({ success: false, message: 'Face data not registered. Please register your face first.' });
     }
 
-    // Ensure stored descriptor exists and is an array of numbers
-    let storedDescriptor = faceData.faceDescriptor;
-    if (!Array.isArray(storedDescriptor) || storedDescriptor.length !== incomingDescriptor.length) {
-      return res.status(500).json({ success: false, message: 'Stored face descriptor invalid or mismatched' });
+    const storedDescriptor = faceData.faceDescriptor;
+    if (!Array.isArray(storedDescriptor) || storedDescriptor.length !== 512) {
+      try { await fs.unlink(req.file.path); } catch (_) {}
+      return res.status(500).json({ success: false, message: 'Stored face descriptor invalid' });
     }
-    storedDescriptor = storedDescriptor.map(x => Number(x));
 
-    // Compare descriptors with strict threshold
-    const comparison = compareFaceDescriptors(incomingDescriptor, storedDescriptor, FACE_MATCH_THRESHOLD);
+    const imageBuffer = await fs.readFile(req.file.path);
+    const formData = new FormData();
+    formData.append('file', imageBuffer, {
+      filename: req.file.filename,
+      contentType: req.file.mimetype
+    });
+    formData.append('stored_embedding', JSON.stringify(storedDescriptor));
 
-    if (!comparison.match) {
-      return res.status(401).json({
+    let verifyResult;
+    try {
+      verifyResult = await callFaceService('/verify', formData);
+    } catch (error) {
+      try { await fs.unlink(req.file.path); } catch (_) {}
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Face verification service error', 
+        error: error.message 
+      });
+    }
+
+    try { await fs.unlink(req.file.path); } catch (_) {}
+
+    if (!verifyResult.success) {
+      return res.status(400).json({
         success: false,
-        message: `Face verification failed. Confidence: ${comparison.confidence}%`,
+        message: verifyResult.message || 'Face verification failed',
         verification: {
           match: false,
-          confidence: comparison.confidence,
-          distance: comparison.distance
+          confidence: verifyResult.confidence || 0,
+          distance: verifyResult.distance || 1
         }
       });
     }
 
-    // Location verification
+    if (!verifyResult.match) {
+      return res.status(401).json({
+        success: false,
+        message: `Face verification failed. Confidence: ${Math.round(verifyResult.confidence)}%`,
+        verification: {
+          match: false,
+          confidence: verifyResult.confidence,
+          distance: verifyResult.distance
+        }
+      });
+    }
+
     const OFFICE_LOCATION = {
       latitude: 22.29867,
       longitude: 73.13130,
-      radius: 999999 // meters - TEMPORARILY INCREASED FOR TESTING (was 1500)
+      radius: 999999
     };
 
     const distance = calculateGeoDistance(
@@ -351,7 +323,7 @@ export const verifyFaceAttendance = async (req, res) => {
         message: `You are not within office premises. Distance: ${Math.round(distance)}m`,
         verification: {
           faceMatch: true,
-          faceConfidence: comparison.confidence,
+          faceConfidence: verifyResult.confidence,
           locationMatch: false,
           distance: Math.round(distance),
           maxDistance: OFFICE_LOCATION.radius
@@ -359,13 +331,12 @@ export const verifyFaceAttendance = async (req, res) => {
       });
     }
 
-    // Successful verification — you may create attendance record here if needed
     res.json({
       success: true,
       message: 'Face and location verification successful',
       verification: {
         faceMatch: true,
-        faceConfidence: comparison.confidence,
+        faceConfidence: verifyResult.confidence,
         locationMatch: true,
         distance: Math.round(distance),
         maxDistance: OFFICE_LOCATION.radius
@@ -374,6 +345,9 @@ export const verifyFaceAttendance = async (req, res) => {
 
   } catch (error) {
     console.error('Face verification error:', error);
+    if (req.file && req.file.path) {
+      try { await fs.unlink(req.file.path); } catch (_) {}
+    }
     res.status(500).json({ success: false, message: 'Server error during face verification' });
   }
 };
@@ -397,7 +371,6 @@ export const deleteEmployeeFace = async (req, res) => {
     }
 
     await faceData.deleteOne();
-
     res.json({ success: true, message: 'Face data deleted successfully' });
 
   } catch (error) {
@@ -425,5 +398,55 @@ export const getEmployeesWithoutFace = async (req, res) => {
   } catch (error) {
     console.error('Get employees without face error:', error);
     res.status(500).json({ success: false, message: 'Server error while fetching employees' });
+  }
+};
+
+// @desc    Detect faces in an image (for testing/preview)
+// @route   POST /api/face-detection/detect
+// @access  Private
+export const detectFaces = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Image is required' });
+    }
+
+    const imageBuffer = await fs.readFile(req.file.path);
+    const formData = new FormData();
+    formData.append('file', imageBuffer, {
+      filename: req.file.filename,
+      contentType: req.file.mimetype
+    });
+
+    let faceResult;
+    try {
+      faceResult = await callFaceService('/detect', formData);
+    } catch (error) {
+      try { await fs.unlink(req.file.path); } catch (_) {}
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Face detection service error', 
+        error: error.message 
+      });
+    }
+
+    try { await fs.unlink(req.file.path); } catch (_) {}
+
+    res.json({
+      success: true,
+      faces: faceResult.faces.map(face => ({
+        bbox: face.bbox,
+        confidence: face.confidence,
+        age: face.age,
+        gender: face.gender
+      })),
+      count: faceResult.faces.length
+    });
+
+  } catch (error) {
+    console.error('Face detection error:', error);
+    if (req.file && req.file.path) {
+      try { await fs.unlink(req.file.path); } catch (_) {}
+    }
+    res.status(500).json({ success: false, message: 'Server error during face detection' });
   }
 };
