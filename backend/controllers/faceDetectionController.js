@@ -226,10 +226,10 @@ export const verifyFaceAttendance = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Face image is required' });
     }
 
-    if (!location || location.latitude === undefined || location.longitude === undefined) {
-      try { await fs.unlink(req.file.path); } catch (_) {}
-      return res.status(400).json({ success: false, message: 'Location is required' });
-    }
+    // Location is optional - use office location as default if not provided
+    const userLocation = (location && location.latitude !== undefined && location.longitude !== undefined)
+      ? location
+      : { latitude: 22.29867, longitude: 73.13130 }; // Default to office location if not provided
 
     const employee = await Employee.findOne({ user: req.user.id });
     if (!employee) {
@@ -299,8 +299,8 @@ export const verifyFaceAttendance = async (req, res) => {
     };
 
     const distance = calculateGeoDistance(
-      Number(location.latitude),
-      Number(location.longitude),
+      Number(userLocation.latitude),
+      Number(userLocation.longitude),
       OFFICE_LOCATION.latitude,
       OFFICE_LOCATION.longitude
     );
