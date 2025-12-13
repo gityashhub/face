@@ -57,10 +57,10 @@ export const createEmployee = async (req, res) => {
       });
     }
 
-    if (faceDescriptor.length !== 128 || !faceDescriptor.every(val => typeof val === 'number' && !isNaN(val))) {
+    if (faceDescriptor.length !== 512 || !faceDescriptor.every(val => typeof val === 'number' && !isNaN(val))) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid face data. Face descriptor must be a valid 128-dimensional vector. Please recapture the face.'
+        message: 'Invalid face data. Face descriptor must be a valid 512-dimensional vector. Please recapture the face.'
       });
     }
 
@@ -607,7 +607,7 @@ export const updateEmployeeWithFace = async (req, res) => {
     }
 
     // If face data was provided, create or update FaceData record
-    if (faceDescriptor && faceDescriptor.length === 128) {
+    if (faceDescriptor && faceDescriptor.length === 512) {
       try {
         const existingFaceData = await FaceData.findOne({ employee: targetEmployeeId });
         
