@@ -16,10 +16,10 @@ export const validateFaceData = (req, res, next) => {
         });
       }
 
-      if (descriptor.length !== 128) {
+      if (descriptor.length !== 512) {
         return res.status(400).json({
           success: false,
-          message: 'Face descriptor must have exactly 128 dimensions'
+          message: 'Face descriptor must have exactly 512 dimensions'
         });
       }
 

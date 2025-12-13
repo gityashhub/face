@@ -477,10 +477,10 @@ export const checkInWithFace = async (req, res) => {
     console.log('Combined check-in request:', { userId: req.user.id, hasFaceDescriptor: !!faceDescriptor, hasLocation: !!location });
 
     // Validate input data
-    if (!faceDescriptor || !Array.isArray(faceDescriptor) || faceDescriptor.length !== 128) {
+    if (!faceDescriptor || !Array.isArray(faceDescriptor) || faceDescriptor.length !== 512) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid face descriptor. Must be array of 128 numbers.',
+        message: 'Invalid face descriptor. Must be array of 512 numbers.',
         validation: {
           face: false,
           location: false
@@ -720,10 +720,10 @@ export const verifyFace = async (req, res) => {
     const { faceDescriptor } = req.body;
 
     // Validate input
-    if (!faceDescriptor || !Array.isArray(faceDescriptor) || faceDescriptor.length !== 128) {
+    if (!faceDescriptor || !Array.isArray(faceDescriptor) || faceDescriptor.length !== 512) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid face descriptor. Must be array of 128 numbers.'
+        message: 'Invalid face descriptor. Must be array of 512 numbers.'
       });
     }
 
