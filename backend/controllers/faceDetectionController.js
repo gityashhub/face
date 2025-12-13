@@ -344,7 +344,7 @@ export const verifyVideoFace = async (req, res) => {
     }
 
     if (!verifyResult.match) {
-      return res.status(401).json({
+      return res.status(400).json({
         success: false,
         message: `Face verification failed. Confidence: ${Math.round(verifyResult.confidence)}%`,
         verification: {
@@ -641,7 +641,7 @@ export const verifyFaceAttendance = async (req, res) => {
     }
 
     if (!verifyResult.match) {
-      return res.status(401).json({
+      return res.status(400).json({
         success: false,
         message: `Face verification failed. Confidence: ${Math.round(verifyResult.confidence)}%`,
         verification: {
