@@ -38,23 +38,34 @@ A full-stack Employee Management System built with React (Vite) frontend and Nod
 - Purchase order management
 
 ## Face Recognition System
-The system uses InsightFace for robust face recognition with the following features:
+The system uses InsightFace for robust face recognition with enhanced anti-spoofing:
 
-### Multi-Angle Face Registration (Admin)
-- Guided 3-step capture process (front, left, right angles)
-- Real-time face quality validation (brightness, sharpness, centering)
-- Quality score feedback during capture
-- Stores embeddings for each angle plus averaged embedding
+### Continuous Video Face Registration (Admin)
+- Single continuous video recording (no separate captures needed)
+- Automatic pose detection (front, left, right, up, down)
+- Real-time pose guidance with visual feedback
+- Quality validation per frame (brightness, sharpness, centering)
+- Minimum coverage requirements for registration
+- Stores embeddings for each detected pose plus averaged embedding
 
-### Video-Based Verification (Employee)
+### Live Video Verification with Anti-Spoofing (Employee)
 - Captures multiple video frames for verification
-- Liveness detection to prevent photo spoofing
-- Checks: frame movement, embedding consistency across frames
+- Enhanced liveness detection with multiple anti-spoofing checks:
+  - Texture analysis (detects printed photos)
+  - Screen detection using FFT (detects digital displays)
+  - Movement detection (requires natural motion)
+  - Embedding consistency across frames
+  - Pose variation verification
 - Uses averaged embedding comparison with stored multi-angle data
+- Strict security: attendance only marked when ALL checks pass
 
 ### Face Service (Python)
 - Runs on port 8000
-- Endpoints: `/detect`, `/analyze-frame-base64`, `/register-multi-angle`, `/verify-video`
+- Endpoints:
+  - `/detect` - Basic face detection
+  - `/analyze-frame-base64` - Real-time frame analysis with pose detection
+  - `/register-continuous-video` - Continuous video registration with auto pose detection
+  - `/verify-live-video` - Live video verification with enhanced liveness checks
 - Uses InsightFace buffalo_sc model for face detection and embedding
 
 ## Development Setup
