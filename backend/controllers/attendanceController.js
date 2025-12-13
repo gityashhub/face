@@ -115,6 +115,17 @@ export const checkIn = async (req, res) => {
     // Create attendance record
     const checkInTime = new Date();
 const localDate = new Date(checkInTime.toISOString().split('T')[0] + 'T00:00:00Z');    
+    
+    // Handle address - it might be an object or a string
+    let addressString = '';
+    if (location.address) {
+      if (typeof location.address === 'object') {
+        addressString = location.address.address || `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`;
+      } else {
+        addressString = location.address;
+      }
+    }
+
     const attendance = new Attendance({
       employee: employee._id,
       user: req.user.id,
@@ -123,7 +134,7 @@ const localDate = new Date(checkInTime.toISOString().split('T')[0] + 'T00:00:00Z
       checkInLocation: {
         latitude: location.latitude,
         longitude: location.longitude,
-        address: location.address || '',
+        address: addressString,
         accuracy: location.accuracy || 0
       },
       notes: notes || '',
@@ -366,10 +377,21 @@ let attendance = await Attendance.findOne({
     // Perform checkout
     const checkOutTime = new Date();
     attendance.checkOutTime = checkOutTime;
+    
+    // Handle address - it might be an object or a string
+    let checkoutAddressString = '';
+    if (location.address) {
+      if (typeof location.address === 'object') {
+        checkoutAddressString = location.address.address || `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`;
+      } else {
+        checkoutAddressString = location.address;
+      }
+    }
+    
     attendance.checkOutLocation = {
       latitude: location.latitude,
       longitude: location.longitude,
-      address: location.address || '',
+      address: checkoutAddressString,
       accuracy: location.accuracy || 0
     };
     
@@ -627,6 +649,16 @@ export const checkInWithFace = async (req, res) => {
     const checkInTime = new Date();
     const localDate = new Date(checkInTime.toISOString().split('T')[0] + 'T00:00:00Z');
 
+    // Handle address - it might be an object or a string
+    let faceAddressString = '';
+    if (location.address) {
+      if (typeof location.address === 'object') {
+        faceAddressString = location.address.address || `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`;
+      } else {
+        faceAddressString = location.address;
+      }
+    }
+
     const attendance = new Attendance({
       employee: employee._id,
       user: req.user.id,
@@ -635,7 +667,7 @@ export const checkInWithFace = async (req, res) => {
       checkInLocation: {
         latitude: location.latitude,
         longitude: location.longitude,
-        address: location.address || '',
+        address: faceAddressString,
         accuracy: location.accuracy || 0
       },
       notes: notes || 'Check-in via web application with dual face and location verification',

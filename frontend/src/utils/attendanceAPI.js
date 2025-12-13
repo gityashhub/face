@@ -162,7 +162,7 @@ export const attendanceAPI = {
           latitude: position.latitude,
           longitude: position.longitude,
           accuracy: position.accuracy,
-          address
+          address: typeof address === 'object' ? address.address : address
         },
         deviceInfo
       });
@@ -197,7 +197,7 @@ export const attendanceAPI = {
           latitude: position.latitude,
           longitude: position.longitude,
           accuracy: position.accuracy,
-          address
+          address: typeof address === 'object' ? address.address : address
         },
         deviceInfo
       });
@@ -231,7 +231,7 @@ export const attendanceAPI = {
           latitude: position.latitude,
           longitude: position.longitude,
           accuracy: position.accuracy,
-          address
+          address: typeof address === 'object' ? address.address : address
         }
       });
     } catch (error) {

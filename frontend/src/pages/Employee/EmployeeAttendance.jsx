@@ -77,6 +77,16 @@ const EmployeeAttendance = () => {
         localCameraHelper.current = new CameraHelper();
       }
       
+      // Wait for video element to be ready
+      if (!videoRef.current) {
+        // Wait a bit for the video element to mount
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      if (!videoRef.current) {
+        throw new Error('Video element not available. Please try again.');
+      }
+      
       await localCameraHelper.current.startCamera(videoRef.current);
       setCameraReady(true);
     } catch (error) {
@@ -213,8 +223,10 @@ const EmployeeAttendance = () => {
     try {
       setLocationLoading(true);
       const position = await geolocationUtils.getCurrentPosition();
-      const address = await geolocationUtils.getAddressFromCoords(position.latitude, position.longitude);
-      setCurrentLocation({ ...position, address });
+      const addressData = await geolocationUtils.getAddressFromCoords(position.latitude, position.longitude);
+      // Format address as string for display
+      const addressString = typeof addressData === 'object' ? addressData.address : addressData;
+      setCurrentLocation({ ...position, address: addressString });
     } catch (error) {
       console.error('Location error:', error);
       toast.error(error.message);

@@ -138,8 +138,10 @@ const EmployeeDashboard = () => {
   const getCurrentLocation = async () => {
     try {
       const position = await geolocationUtils.getCurrentPosition();
-      const address = await geolocationUtils.getAddressFromCoords(position.latitude, position.longitude);
-      setLocation({ ...position, address });
+      const addressData = await geolocationUtils.getAddressFromCoords(position.latitude, position.longitude);
+      // Format address as string for display
+      const addressString = typeof addressData === 'object' ? addressData.address : addressData;
+      setLocation({ ...position, address: addressString });
     } catch (error) {
       console.error('Location error:', error);
     }
@@ -446,7 +448,12 @@ const EmployeeDashboard = () => {
     try {
       setAttendanceLoading(true);
       const deviceInfo = geolocationUtils.getDeviceInfo();
-      const attendanceData = { location, deviceInfo, notes: 'Check-in via employee dashboard' };
+      // Format location with address as string (not object)
+      const formattedLocation = {
+        ...location,
+        address: typeof location.address === 'object' ? location.address.address : location.address
+      };
+      const attendanceData = { location: formattedLocation, deviceInfo, notes: 'Check-in via employee dashboard' };
       const response = await attendanceAPI.checkIn(attendanceData);
       if (response.data.success) {
         toast.success('Attendance marked successfully!');
