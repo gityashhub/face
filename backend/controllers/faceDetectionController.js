@@ -426,7 +426,8 @@ export const detectFaces = async (req, res) => {
         bbox: face.bbox,
         confidence: face.confidence,
         age: face.age,
-        gender: face.gender
+        gender: face.gender,
+        embedding: face.embedding
       })),
       count: faceResult.faces.length
     });
