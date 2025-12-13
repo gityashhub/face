@@ -1,9 +1,10 @@
-modules = ["nodejs-20", "web"]
+modules = ["nodejs-20", "web", "python-3.11"]
 [agent]
 expertMode = true
 
 [nix]
 channel = "stable-25_05"
+packages = ["freetype", "lcms2", "libimagequant", "libjpeg", "libtiff", "libwebp", "libxcrypt", "oneDNN", "openjpeg", "re2", "tcl", "tk", "zlib"]
 
 [workflows]
 runButton = "Project"
@@ -20,6 +21,10 @@ args = "Backend Server"
 [[workflows.workflow.tasks]]
 task = "workflow.run"
 args = "Frontend"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Face Service"
 
 [[workflows.workflow]]
 name = "Backend Server"
@@ -45,6 +50,18 @@ waitForPort = 5000
 [workflows.workflow.metadata]
 outputType = "webview"
 
+[[workflows.workflow]]
+name = "Face Service"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd face_service && python main.py"
+waitForPort = 8000
+
+[workflows.workflow.metadata]
+outputType = "console"
+
 [[ports]]
 localPort = 3001
 externalPort = 3001
@@ -56,6 +73,10 @@ externalPort = 80
 [[ports]]
 localPort = 5001
 externalPort = 3000
+
+[[ports]]
+localPort = 8000
+externalPort = 8000
 
 [deployment]
 deploymentTarget = "vm"
