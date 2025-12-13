@@ -32,6 +32,7 @@ import messageRoutes from './routes/messageRoutes.js';
 import botRoutes from './routes/botRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
 import purchaseRoutes from './routes/purchaseRoutes.js';
+import faceDetectionRoutes from './routes/faceDetectionRoutes.js';
 
 // import { createAdminIfNotExists } from './controllers/initAdmin.js';
 
@@ -81,6 +82,7 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/bot', botRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/purchase', purchaseRoutes);
+app.use('/api/face-detection', faceDetectionRoutes);
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.status(200).json({

@@ -1,0 +1,136 @@
+
+(anonymous) @ EmployeeManagement.jsx:655Understand this error
+api.js:36 API Request: {url: '/face-detection/detect', method: 'post', hasToken: true, token: 'eyJhbGciOiJIUzI1NiIs...'}
+faceAPI.js:51  POST https://4cc2ab82-419f-4f3e-8ec4-78029cbcd243-00-1tcar5j08s8sw.picard.replit.dev/api/face-detection/detect 404 (Not Found)
+dispatchXhrRequest @ axios.js?v=bf9e7ce4:1683
+xhr @ axios.js?v=bf9e7ce4:1560
+dispatchRequest @ axios.js?v=bf9e7ce4:2085
+Promise.then
+_request @ axios.js?v=bf9e7ce4:2288
+request @ axios.js?v=bf9e7ce4:2197
+httpMethod @ axios.js?v=bf9e7ce4:2334
+wrap @ axios.js?v=bf9e7ce4:8
+detectFaces @ faceAPI.js:51
+(anonymous) @ EmployeeManagement.jsx:621Understand this error
+api.js:62 API Response Error: {url: '/face-detection/detect', status: 404, message: undefined}
+(anonymous) @ api.js:62
+Promise.then
+_request @ axios.js?v=bf9e7ce4:2288
+request @ axios.js?v=bf9e7ce4:2197
+httpMethod @ axios.js?v=bf9e7ce4:2334
+wrap @ axios.js?v=bf9e7ce4:8
+detectFaces @ faceAPI.js:51
+(anonymous) @ EmployeeManagement.jsx:621Understand this error
+faceAPI.js:55 Error detecting faces: AxiosError {message: 'Request failed with status code 404', name: 'AxiosError', code: 'ERR_BAD_REQUEST', config: {…}, request: XMLHttpRequest, …}
+detectFaces @ faceAPI.js:55
+await in detectFaces
+(anonymous) @ EmployeeManagement.jsx:621Understand this error
+EmployeeManagement.jsx:655 Face detection error: AxiosError {message: 'Request failed with status code 404', name: 'AxiosError', code: 'ERR_BAD_REQUEST', config: {…}, request: XMLHttpRequest, …}
+(anonymous) @ EmployeeManagement.jsx:655Understand this error
+api.js:36 API Request: {url: '/face-detection/detect', method: 'post', hasToken: true, token: 'eyJhbGciOiJIUzI1NiIs...'}
+faceAPI.js:51  POST https://4cc2ab82-419f-4f3e-8ec4-78029cbcd243-00-1tcar5j08s8sw.picard.replit.dev/api/face-detection/detect 404 (Not Found)
+dispatchXhrRequest @ axios.js?v=bf9e7ce4:1683
+xhr @ axios.js?v=bf9e7ce4:1560
+dispatchRequest @ axios.js?v=bf9e7ce4:2085
+Promise.then
+_request @ axios.js?v=bf9e7ce4:2288
+request @ axios.js?v=bf9e7ce4:2197
+httpMethod @ axios.js?v=bf9e7ce4:2334
+wrap @ axios.js?v=bf9e7ce4:8
+detectFaces @ faceAPI.js:51
+(anonymous) @ EmployeeManagement.jsx:621Understand this error
+api.js:62 API Response Error: {url: '/face-detection/detect', status: 404, message: undefined}
+(anonymous) @ api.js:62
+Promise.then
+_request @ axios.js?v=bf9e7ce4:2288
+request @ axios.js?v=bf9e7ce4:2197
+httpMethod @ axios.js?v=bf9e7ce4:2334
+wrap @ axios.js?v=bf9e7ce4:8
+detectFaces @ faceAPI.js:51
+(anonymous) @ EmployeeManagement.jsx:621Understand this error
+faceAPI.js:55 Error detecting faces: AxiosError {message: 'Request failed with status code 404', name: 'AxiosError', code: 'ERR_BAD_REQUEST', config: {…}, request: XMLHttpRequest, …}
+detectFaces @ faceAPI.js:55
+await in detectFaces
+(anonymous) @ EmployeeManagement.jsx:621Understand this error
+EmployeeManagement.jsx:655 Face detection error: AxiosError {message: 'Request failed with status code 404', name: 'AxiosError', code: 'ERR_BAD_REQUEST', config: {…}, request: XMLHttpRequest, …}
+(anonymous) @ EmployeeManagement.jsx:655Understand this error
+api.js:36 API Request: {url: '/face-detection/detect', method: 'post', hasToken: true, token: 'eyJhbGciOiJIUzI1NiIs...'}
+faceAPI.js:51  POST https://4cc2ab82-419f-4f3e-8ec4-78029cbcd243-00-1tcar5j08s8sw.picard.replit.dev/api/face-detection/detect 404 (Not Found)
+dispatchXhrRequest @ axios.js?v=bf9e7ce4:1683
+xhr @ axios.js?v=bf9e7ce4:1560
+dispatchRequest @ axios.js?v=bf9e7ce4:2085
+Promise.then
+_request @ axios.js?v=bf9e7ce4:2288
+request @ axios.js?v=bf9e7ce4:2197
+httpMethod @ axios.js?v=bf9e7ce4:2334
+wrap @ axios.js?v=bf9e7ce4:8
+detectFaces @ faceAPI.js:51
+(anonymous) @ EmployeeManagement.jsx:621Understand this error
+api.js:62 API Response Error: {url: '/face-detection/detect', status: 404, message: undefined}
+(anonymous) @ api.js:62
+Promise.then
+_request @ axios.js?v=bf9e7ce4:2288
+request @ axios.js?v=bf9e7ce4:2197
+httpMethod @ axios.js?v=bf9e7ce4:2334
+wrap @ axios.js?v=bf9e7ce4:8
+detectFaces @ faceAPI.js:51
+(anonymous) @ EmployeeManagement.jsx:621Understand this error
+faceAPI.js:55 Error detecting faces: AxiosError {message: 'Request failed with status code 404', name: 'AxiosError', code: 'ERR_BAD_REQUEST', config: {…}, request: XMLHttpRequest, …}
+detectFaces @ faceAPI.js:55
+await in detectFaces
+(anonymous) @ EmployeeManagement.jsx:621Understand this error
+EmployeeManagement.jsx:655 Face detection error: AxiosError {message: 'Request failed with status code 404', name: 'AxiosError', code: 'ERR_BAD_REQUEST', config: {…}, request: XMLHttpRequest, …}
+(anonymous) @ EmployeeManagement.jsx:655Understand this error
+api.js:36 API Request: {url: '/face-detection/detect', method: 'post', hasToken: true, token: 'eyJhbGciOiJIUzI1NiIs...'}
+faceAPI.js:51  POST https://4cc2ab82-419f-4f3e-8ec4-78029cbcd243-00-1tcar5j08s8sw.picard.replit.dev/api/face-detection/detect 404 (Not Found)
+dispatchXhrRequest @ axios.js?v=bf9e7ce4:1683
+xhr @ axios.js?v=bf9e7ce4:1560
+dispatchRequest @ axios.js?v=bf9e7ce4:2085
+Promise.then
+_request @ axios.js?v=bf9e7ce4:2288
+request @ axios.js?v=bf9e7ce4:2197
+httpMethod @ axios.js?v=bf9e7ce4:2334
+wrap @ axios.js?v=bf9e7ce4:8
+detectFaces @ faceAPI.js:51
+(anonymous) @ EmployeeManagement.jsx:621Understand this error
+api.js:62 API Response Error: {url: '/face-detection/detect', status: 404, message: undefined}
+(anonymous) @ api.js:62
+Promise.then
+_request @ axios.js?v=bf9e7ce4:2288
+request @ axios.js?v=bf9e7ce4:2197
+httpMethod @ axios.js?v=bf9e7ce4:2334
+wrap @ axios.js?v=bf9e7ce4:8
+detectFaces @ faceAPI.js:51
+(anonymous) @ EmployeeManagement.jsx:621Understand this error
+faceAPI.js:55 Error detecting faces: AxiosError {message: 'Request failed with status code 404', name: 'AxiosError', code: 'ERR_BAD_REQUEST', config: {…}, request: XMLHttpRequest, …}
+detectFaces @ faceAPI.js:55
+await in detectFaces
+(anonymous) @ EmployeeManagement.jsx:621Understand this error
+EmployeeManagement.jsx:655 Face detection error: AxiosError {message: 'Request failed with status code 404', name: 'AxiosError', code: 'ERR_BAD_REQUEST', config: {…}, request: XMLHttpRequest, …}
+(anonymous) @ EmployeeManagement.jsx:655Understand this error
+api.js:36 API Request: {url: '/face-detection/detect', method: 'post', hasToken: true, token: 'eyJhbGciOiJIUzI1NiIs...'}
+faceAPI.js:51  POST https://4cc2ab82-419f-4f3e-8ec4-78029cbcd243-00-1tcar5j08s8sw.picard.replit.dev/api/face-detection/detect 404 (Not Found)
+dispatchXhrRequest @ axios.js?v=bf9e7ce4:1683
+xhr @ axios.js?v=bf9e7ce4:1560
+dispatchRequest @ axios.js?v=bf9e7ce4:2085
+Promise.then
+_request @ axios.js?v=bf9e7ce4:2288
+request @ axios.js?v=bf9e7ce4:2197
+httpMethod @ axios.js?v=bf9e7ce4:2334
+wrap @ axios.js?v=bf9e7ce4:8
+detectFaces @ faceAPI.js:51
+(anonymous) @ EmployeeManagement.jsx:621Understand this error
+api.js:62 API Response Error: {url: '/face-detection/detect', status: 404, message: undefined}
+(anonymous) @ api.js:62
+Promise.then
+_request @ axios.js?v=bf9e7ce4:2288
+request @ axios.js?v=bf9e7ce4:2197
+httpMethod @ axios.js?v=bf9e7ce4:2334
+wrap @ axios.js?v=bf9e7ce4:8
+detectFaces @ faceAPI.js:51
+(anonymous) @ EmployeeManagement.jsx:621Understand this error
+faceAPI.js:55 Error detecting faces: AxiosError {message: 'Request failed with status code 404', name: 'AxiosError', code: 'ERR_BAD_REQUEST', config: {…}, request: XMLHttpRequest, …}
+detectFaces @ faceAPI.js:55
+await in detectFaces
+(anonymous) @ EmployeeManagement.jsx:621Understand this error
+EmployeeManagement.jsx:655 Face detection error: AxiosError {message: 'Request failed with status code 404', name: 'AxiosError', code: 'ERR_BAD_REQUEST', config: {…}, request: XMLHttpRequest, …}
