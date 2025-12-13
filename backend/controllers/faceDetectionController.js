@@ -827,6 +827,236 @@ export const detectFaces = async (req, res) => {
   }
 };
 
+// @desc    Register face using continuous video recording
+// @route   POST /api/face-detection/register-continuous-video
+// @access  Private (Admin)
+export const registerContinuousVideo = async (req, res) => {
+  try {
+    const { employeeId, frames } = req.body;
+
+    if (!employeeId) {
+      return res.status(400).json({ success: false, message: 'Employee ID is required' });
+    }
+
+    if (!frames || !Array.isArray(frames) || frames.length < 10) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'At least 10 video frames are required for registration' 
+      });
+    }
+
+    const employee = await Employee.findById(employeeId).populate('user');
+    if (!employee) {
+      return res.status(404).json({ success: false, message: 'Employee not found' });
+    }
+
+    let faceResult;
+    try {
+      faceResult = await callFaceServiceJSON('/register-continuous-video', { frames });
+    } catch (error) {
+      return res.status(500).json({ 
+        success: false, 
+        message: error.message || 'Face registration service error'
+      });
+    }
+
+    if (!faceResult.success) {
+      return res.status(400).json({ 
+        success: false, 
+        message: faceResult.message || 'Face registration failed',
+        poses_captured: faceResult.poses_captured,
+        liveness_score: faceResult.liveness_score
+      });
+    }
+
+    employee.faceEmbeddings = {
+      front: faceResult.embeddings.front,
+      left: faceResult.embeddings.left,
+      right: faceResult.embeddings.right,
+      average: faceResult.average_embedding
+    };
+    employee.faceQualityScores = faceResult.quality_scores;
+    employee.faceDescriptor = faceResult.average_embedding;
+    employee.hasFaceRegistered = true;
+    employee.faceRegistrationDate = new Date();
+    employee.faceRegistrationMethod = 'video';
+
+    await employee.save();
+
+    const existingFaceData = await FaceData.findOne({ employee: employeeId });
+    if (existingFaceData) {
+      existingFaceData.faceDescriptor = faceResult.average_embedding;
+      existingFaceData.confidence = Math.round(faceResult.liveness_score * 100);
+      existingFaceData.lastUpdated = new Date();
+      existingFaceData.metadata = {
+        captureDevice: req.headers['user-agent'] || 'Unknown',
+        captureEnvironment: 'Continuous Video Registration',
+        processingVersion: '3.0-InsightFace-Video'
+      };
+      await existingFaceData.save();
+    } else {
+      const faceData = new FaceData({
+        employee: employeeId,
+        user: employee.user._id,
+        faceDescriptor: faceResult.average_embedding,
+        landmarks: [],
+        faceImageUrl: '',
+        confidence: Math.round(faceResult.liveness_score * 100),
+        metadata: {
+          captureDevice: req.headers['user-agent'] || 'Unknown',
+          captureEnvironment: 'Continuous Video Registration',
+          processingVersion: '3.0-InsightFace-Video'
+        }
+      });
+      await faceData.save();
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Face registered successfully with continuous video capture',
+      poses_captured: faceResult.poses_captured,
+      quality_scores: faceResult.quality_scores,
+      liveness_score: faceResult.liveness_score,
+      total_frames_processed: faceResult.total_frames_processed
+    });
+
+  } catch (error) {
+    console.error('Continuous video registration error:', error);
+    res.status(500).json({ success: false, message: 'Server error during face registration' });
+  }
+};
+
+// @desc    Verify face using live video with enhanced liveness detection
+// @route   POST /api/face-detection/verify-live-video
+// @access  Private (Employee)
+export const verifyLiveVideo = async (req, res) => {
+  try {
+    const { frames, location } = req.body;
+
+    if (!frames || !Array.isArray(frames) || frames.length < 5) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'At least 5 video frames are required for live verification' 
+      });
+    }
+
+    const userLocation = (location && location.latitude !== undefined && location.longitude !== undefined)
+      ? location
+      : { latitude: 22.29867, longitude: 73.13130 };
+
+    const employee = await Employee.findOne({ user: req.user.id });
+    if (!employee) {
+      return res.status(404).json({ success: false, message: 'Employee record not found' });
+    }
+
+    let storedEmbeddings;
+    if (employee.faceEmbeddings && employee.faceEmbeddings.average && employee.faceEmbeddings.average.length === 512) {
+      storedEmbeddings = employee.faceEmbeddings;
+    } else if (employee.faceDescriptor && employee.faceDescriptor.length === 512) {
+      storedEmbeddings = { average: employee.faceDescriptor };
+    } else {
+      const faceData = await FaceData.findByEmployee(employee._id);
+      if (!faceData || !faceData.faceDescriptor || faceData.faceDescriptor.length !== 512) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Face data not registered. Please register your face first.' 
+        });
+      }
+      storedEmbeddings = { average: faceData.faceDescriptor };
+    }
+
+    let verifyResult;
+    try {
+      verifyResult = await callFaceServiceJSON('/verify-live-video', {
+        frames: frames,
+        stored_embeddings: storedEmbeddings
+      });
+    } catch (error) {
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Face verification service error', 
+        error: error.message 
+      });
+    }
+
+    if (!verifyResult.success || !verifyResult.liveness_passed) {
+      return res.status(400).json({
+        success: false,
+        message: verifyResult.message || 'Liveness check failed - verification denied',
+        verification: {
+          match: false,
+          liveness_passed: false,
+          liveness_score: verifyResult.liveness_score || 0,
+          anti_spoof_score: verifyResult.anti_spoof_score || 0
+        }
+      });
+    }
+
+    if (!verifyResult.match) {
+      return res.status(400).json({
+        success: false,
+        message: `Face verification failed. Confidence: ${Math.round(verifyResult.confidence)}%`,
+        verification: {
+          match: false,
+          confidence: verifyResult.confidence,
+          similarity: verifyResult.similarity,
+          liveness_passed: true,
+          liveness_score: verifyResult.liveness_score
+        }
+      });
+    }
+
+    const OFFICE_LOCATION = {
+      latitude: 22.29867,
+      longitude: 73.13130,
+      radius: 999999
+    };
+
+    const distance = calculateGeoDistance(
+      Number(userLocation.latitude),
+      Number(userLocation.longitude),
+      OFFICE_LOCATION.latitude,
+      OFFICE_LOCATION.longitude
+    );
+
+    if (!Number.isFinite(distance)) {
+      return res.status(400).json({ success: false, message: 'Invalid location coordinates' });
+    }
+
+    if (distance > OFFICE_LOCATION.radius) {
+      return res.status(400).json({
+        success: false,
+        message: `You are not within office premises. Distance: ${Math.round(distance)}m`,
+        verification: {
+          faceMatch: true,
+          faceConfidence: verifyResult.confidence,
+          livenessScore: verifyResult.liveness_score,
+          locationMatch: false,
+          distance: Math.round(distance)
+        }
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Live face verification successful',
+      verification: {
+        faceMatch: true,
+        faceConfidence: verifyResult.confidence,
+        similarity: verifyResult.similarity,
+        livenessScore: verifyResult.liveness_score,
+        antiSpoofScore: verifyResult.anti_spoof_score,
+        locationMatch: true,
+        distance: Math.round(distance)
+      }
+    });
+
+  } catch (error) {
+    console.error('Live video verification error:', error);
+    res.status(500).json({ success: false, message: 'Server error during face verification' });
+  }
+};
+
 // @desc    Check liveness from video frames
 // @route   POST /api/face-detection/check-liveness
 // @access  Private

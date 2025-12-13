@@ -81,6 +81,30 @@ export const faceAPI = {
     }
   },
 
+  registerContinuousVideo: async (employeeId, frames) => {
+    try {
+      return await api.post('/face-detection/register-continuous-video', {
+        employeeId,
+        frames
+      });
+    } catch (error) {
+      console.error('Error registering continuous video:', error);
+      throw error;
+    }
+  },
+
+  verifyLiveVideo: async (frames, location) => {
+    try {
+      return await api.post('/face-detection/verify-live-video', {
+        frames,
+        location
+      });
+    } catch (error) {
+      console.error('Error verifying live video:', error);
+      throw error;
+    }
+  },
+
   deleteEmployeeFace: async (employeeId) => {
     return await api.delete(`/face-detection/employee/${employeeId}`);
   },

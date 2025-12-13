@@ -128,7 +128,7 @@ const EmployeeAttendance = () => {
       setVerificationProgress(50);
       setLivenessMessage('Verifying face and checking liveness...');
 
-      const response = await faceAPI.verifyVideoFace(frames, currentLocation);
+      const response = await faceAPI.verifyLiveVideo(frames, currentLocation);
 
       setVerificationProgress(80);
 
@@ -162,7 +162,10 @@ const EmployeeAttendance = () => {
         const errorMessage = response.data.message || 'Face verification failed';
         setLivenessMessage(errorMessage);
         
-        if (response.data.verification?.liveness_score < 0.5) {
+        const livenessScore = response.data.liveness_score;
+        const livenessPassed = response.data.liveness_passed;
+        
+        if (livenessPassed === false || (livenessScore !== undefined && livenessScore < 0.5)) {
           toast.error('Liveness check failed. Please ensure you are a real person, not a photo or video.');
         } else {
           toast.error(errorMessage);

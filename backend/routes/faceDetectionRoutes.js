@@ -9,7 +9,9 @@ import {
   analyzeFrame,
   analyzeFrameBase64,
   registerMultiAngleFace,
+  registerContinuousVideo,
   verifyVideoFace,
+  verifyLiveVideo,
   checkLiveness,
   upload
 } from '../controllers/faceDetectionController.js';
@@ -19,14 +21,20 @@ const router = express.Router();
 
 router.use(protect);
 
-// Multi-angle video registration (new)
+// Continuous video registration (new primary method)
+router.post('/register-continuous-video', adminOnly, registerContinuousVideo);
+
+// Multi-angle video registration (legacy)
 router.post('/register-multi-angle', adminOnly, registerMultiAngleFace);
 
 // Frame analysis for real-time feedback
 router.post('/analyze-frame', adminOnly, upload.single('file'), analyzeFrame);
 router.post('/analyze-frame-base64', adminOnly, analyzeFrameBase64);
 
-// Video-based verification with liveness detection (new)
+// Live video verification with enhanced liveness detection (new primary method)
+router.post('/verify-live-video', verifyLiveVideo);
+
+// Video-based verification with liveness detection (legacy)
 router.post('/verify-video', verifyVideoFace);
 
 // Liveness check

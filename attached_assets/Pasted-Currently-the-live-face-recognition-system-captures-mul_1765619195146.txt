@@ -1,0 +1,90 @@
+Currently, the live face recognition system captures multiple short videos (4 separate recordings) for different face poses, which results in poor accuracy and user experience.
+I want to redesign this system to use a single continuous live video recording for both face registration and face verification, with high accuracy and reliability.
+
+Requirements
+
+Single Continuous Video Capture
+
+Recording should start once and stop once (one complete video).
+
+During recording, the system must automatically capture and analyze all required face poses (front, left, right, up, down) without requiring separate recordings.
+
+No manual pose selection by the user.
+
+High-Accuracy Face Registration
+
+While recording, extract multiple high-quality face frames from the video.
+
+Ensure:
+
+Proper lighting
+
+Face fully visible
+
+No blur or occlusion
+
+Generate and store robust face embeddings/descriptors using a reliable face recognition model.
+
+Reject registration if face quality, confidence score, or liveness check fails.
+
+Live Face Verification (Liveness + Identity)
+
+During attendance marking, employee must verify identity using live video face recognition.
+
+System must:
+
+Confirm the face matches the registered embeddings
+
+Perform liveness detection to prevent photo/video spoofing
+
+Ensure real-time confidence score crosses a defined threshold
+
+Verification must fail if:
+
+Face mismatch
+
+Liveness detection fails
+
+Video quality is insufficient
+
+Attendance Security Enforcement
+
+Attendance must NOT be marked unless:
+
+Face recognition is successful
+
+Liveness detection passes
+
+Confidence score meets the required accuracy level
+
+No fallback, no manual override.
+
+Accuracy & Performance Goals
+
+Recognition should be:
+
+Highly accurate
+
+Pose-invariant
+
+Lighting-tolerant
+
+Fast and stable on real-world devices
+
+Minimize false positives and false negatives.
+
+System should work reliably in real-time production environments.
+
+User Experience
+
+Simple workflow:
+
+Click “Start Recording”
+
+Record once
+
+Click “Stop”
+
+System handles everything automatically
+
+Clear error messages and retry instructions if verification fails.

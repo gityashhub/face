@@ -15,6 +15,7 @@ import EmployeeTasks from './pages/Employee/EmployeeTasks';
 import AdminAttendance from './pages/Admin/AdminAttendance';
 import EmployeeAttendance from './pages/Employee/EmployeeAttendance';
 import AdminFaceRegistration from './pages/Admin/AdminFaceRegistration';
+import ContinuousFaceRegistration from './pages/Admin/ContinuousFaceRegistration';
 import DepartmentManagementPage from './pages/Admin/DepartmentManagement';
 import LeadManagement from './pages/Sales/LeadManagement';
 import ProblemStatementPage from './pages/Employee/ProblemStatementPage';
@@ -68,6 +69,11 @@ function App() {
             </ProtectedRoute>
           } />
           <Route path="/admin/face-registration" element={
+            <ProtectedRoute role="admin">
+              <ContinuousFaceRegistration/>
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/face-registration-legacy" element={
             <ProtectedRoute role="admin">
               <AdminFaceRegistration/>
             </ProtectedRoute>
