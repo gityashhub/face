@@ -29,13 +29,33 @@ A full-stack Employee Management System built with React (Vite) frontend and Nod
 - User authentication (Admin/Employee roles)
 - Employee management
 - Leave management system
-- Attendance tracking with face recognition
+- Attendance tracking with video-based face recognition
 - Task management
 - Department management
 - Sales lead management
 - Real-time chat (Socket.IO)
 - AI chatbot integration
 - Purchase order management
+
+## Face Recognition System
+The system uses InsightFace for robust face recognition with the following features:
+
+### Multi-Angle Face Registration (Admin)
+- Guided 3-step capture process (front, left, right angles)
+- Real-time face quality validation (brightness, sharpness, centering)
+- Quality score feedback during capture
+- Stores embeddings for each angle plus averaged embedding
+
+### Video-Based Verification (Employee)
+- Captures multiple video frames for verification
+- Liveness detection to prevent photo spoofing
+- Checks: frame movement, embedding consistency across frames
+- Uses averaged embedding comparison with stored multi-angle data
+
+### Face Service (Python)
+- Runs on port 8000
+- Endpoints: `/detect`, `/analyze-frame-base64`, `/register-multi-angle`, `/verify-video`
+- Uses InsightFace buffalo_sc model for face detection and embedding
 
 ## Development Setup
 - **Frontend**: Runs on port 5000 (Vite dev server)
