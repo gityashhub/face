@@ -194,13 +194,38 @@ faceDescriptor: {
   type: [Number], 
   default: null
 },
+faceEmbeddings: {
+  front: { type: [Number], default: null },
+  left: { type: [Number], default: null },
+  right: { type: [Number], default: null },
+  average: { type: [Number], default: null }
+},
+faceQualityScores: {
+  front: { type: Number, default: 0 },
+  left: { type: Number, default: 0 },
+  right: { type: Number, default: 0 }
+},
 faceImage: {
   type: String, 
   default: null
 },
+faceImages: {
+  front: { type: String, default: null },
+  left: { type: String, default: null },
+  right: { type: String, default: null }
+},
 hasFaceRegistered: {
   type: Boolean,
   default: false
+},
+faceRegistrationDate: {
+  type: Date,
+  default: null
+},
+faceRegistrationMethod: {
+  type: String,
+  enum: ['single', 'multi-angle', 'video'],
+  default: null
 },
 
 

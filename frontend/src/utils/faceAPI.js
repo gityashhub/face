@@ -16,6 +16,31 @@ export const faceAPI = {
     }
   },
 
+  registerMultiAngleFace: async (employeeId, frontImage, leftImage, rightImage) => {
+    try {
+      return await api.post('/face-detection/register-multi-angle', {
+        employeeId,
+        frontImage,
+        leftImage,
+        rightImage
+      });
+    } catch (error) {
+      console.error('Error registering multi-angle face:', error);
+      throw error;
+    }
+  },
+
+  analyzeFrameBase64: async (imageBase64) => {
+    try {
+      return await api.post('/face-detection/analyze-frame-base64', {
+        image: imageBase64
+      });
+    } catch (error) {
+      console.error('Error analyzing frame:', error);
+      throw error;
+    }
+  },
+
   getEmployeeFace: async (employeeId) => {
     return await api.get(`/face-detection/employee/${employeeId}`);
   },
@@ -31,6 +56,27 @@ export const faceAPI = {
       });
     } catch (error) {
       console.error('Error verifying face:', error);
+      throw error;
+    }
+  },
+
+  verifyVideoFace: async (frames, location) => {
+    try {
+      return await api.post('/face-detection/verify-video', {
+        frames,
+        location
+      });
+    } catch (error) {
+      console.error('Error verifying video face:', error);
+      throw error;
+    }
+  },
+
+  checkLiveness: async (frames) => {
+    try {
+      return await api.post('/face-detection/check-liveness', { frames });
+    } catch (error) {
+      console.error('Error checking liveness:', error);
       throw error;
     }
   },
@@ -148,6 +194,34 @@ export class CameraHelper {
       canvas.toBlob((blob) => {
         resolve(blob);
       }, 'image/jpeg', 0.9);
+    });
+  }
+
+  captureMultipleFrames(videoElement, count = 5, intervalMs = 200) {
+    return new Promise((resolve) => {
+      const frames = [];
+      let captured = 0;
+      
+      const captureFrame = () => {
+        if (captured >= count) {
+          resolve(frames);
+          return;
+        }
+        
+        const image = this.captureImage(videoElement);
+        if (image) {
+          frames.push(image);
+          captured++;
+        }
+        
+        if (captured < count) {
+          setTimeout(captureFrame, intervalMs);
+        } else {
+          resolve(frames);
+        }
+      };
+      
+      captureFrame();
     });
   }
 }

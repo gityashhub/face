@@ -10,11 +10,12 @@ import {
   TrendingUp,
   Camera,
   ShieldCheck,
-  X
+  X,
+  Video
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { attendanceAPI, geolocationUtils, OFFICE_LOCATION } from '../../utils/attendanceAPI';
-import { faceAPI, cameraHelper } from '../../utils/faceAPI';
+import { faceAPI, CameraHelper } from '../../utils/faceAPI';
 
 const EmployeeAttendance = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -34,6 +35,8 @@ const EmployeeAttendance = () => {
   const [cameraReady, setCameraReady] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState(null);
+  const [verificationProgress, setVerificationProgress] = useState(0);
+  const [livenessMessage, setLivenessMessage] = useState('');
   
   const videoRef = useRef(null);
   const localCameraHelper = useRef(null);
@@ -71,7 +74,6 @@ const EmployeeAttendance = () => {
   const startCamera = async () => {
     try {
       if (!localCameraHelper.current) {
-        const { CameraHelper } = await import('../../utils/faceAPI');
         localCameraHelper.current = new CameraHelper();
       }
       
@@ -90,7 +92,7 @@ const EmployeeAttendance = () => {
     setCameraReady(false);
   }, []);
 
-  const captureFaceForVerification = async () => {
+  const captureVideoFramesAndVerify = async () => {
     if (!cameraReady || !videoRef.current) {
       toast.error('Camera not ready. Please wait.');
       return;
@@ -98,24 +100,36 @@ const EmployeeAttendance = () => {
 
     setIsVerifying(true);
     setVerificationStatus(null);
+    setVerificationProgress(0);
+    setLivenessMessage('Capturing video frames...');
 
     try {
-      const imageBlob = await localCameraHelper.current.captureImageBlob(videoRef.current);
+      setVerificationProgress(20);
+      setLivenessMessage('Please look at the camera and move slightly...');
       
-      if (!imageBlob) {
-        toast.error('Failed to capture image. Please try again.');
+      const frames = await localCameraHelper.current.captureMultipleFrames(videoRef.current, 5, 300);
+      
+      if (frames.length < 3) {
+        toast.error('Failed to capture enough frames. Please try again.');
         setIsVerifying(false);
         return;
       }
 
-      const response = await faceAPI.verifyFaceAttendance(imageBlob, currentLocation);
+      setVerificationProgress(50);
+      setLivenessMessage('Verifying face and checking liveness...');
+
+      const response = await faceAPI.verifyVideoFace(frames, currentLocation);
+
+      setVerificationProgress(80);
 
       if (response.data.success) {
         setVerificationStatus('success');
-        toast.success('Face verified! Now marking attendance...');
+        setVerificationProgress(100);
+        setLivenessMessage('Verification successful!');
+        toast.success('Face verified! Marking attendance...');
         
         const checkInResponse = await attendanceAPI.checkIn({
-          notes: 'Check-in via web with face verification'
+          notes: 'Check-in via video face verification with liveness detection'
         });
 
         if (checkInResponse.data.success) {
@@ -133,12 +147,23 @@ const EmployeeAttendance = () => {
         }
       } else {
         setVerificationStatus('failed');
-        toast.error(response.data.message || 'Face verification failed');
+        setVerificationProgress(100);
+        
+        const errorMessage = response.data.message || 'Face verification failed';
+        setLivenessMessage(errorMessage);
+        
+        if (response.data.verification?.liveness_score < 0.5) {
+          toast.error('Liveness check failed. Please ensure you are a real person, not a photo or video.');
+        } else {
+          toast.error(errorMessage);
+        }
       }
     } catch (error) {
-      console.error('Face verification error:', error);
+      console.error('Video face verification error:', error);
       setVerificationStatus('failed');
+      setVerificationProgress(100);
       const errorMsg = error.response?.data?.message || error.message || 'Face verification failed';
+      setLivenessMessage(errorMsg);
       toast.error(errorMsg);
     } finally {
       setIsVerifying(false);
@@ -164,6 +189,8 @@ const EmployeeAttendance = () => {
 
     setShowFaceVerification(true);
     setVerificationStatus(null);
+    setVerificationProgress(0);
+    setLivenessMessage('');
     startCamera();
   };
 
@@ -172,6 +199,8 @@ const EmployeeAttendance = () => {
     setShowFaceVerification(false);
     setVerificationStatus(null);
     setCameraReady(false);
+    setVerificationProgress(0);
+    setLivenessMessage('');
   };
 
   useEffect(() => {
@@ -307,7 +336,7 @@ const EmployeeAttendance = () => {
               <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
                 My <span className="neon-text">Attendance</span>
               </h1>
-              <p className="text-secondary-400 text-sm md:text-base">Track your daily attendance with face verification</p>
+              <p className="text-secondary-400 text-sm md:text-base">Track your daily attendance with video face verification</p>
             </div>
             <div className="text-left md:text-right">
               <p className="text-lg md:text-2xl font-bold text-white">{currentTime.toLocaleTimeString()}</p>
@@ -358,8 +387,8 @@ const EmployeeAttendance = () => {
                     disabled={!currentLocation || loading}
                     className="w-full px-4 md:px-6 py-3 md:py-4 bg-gradient-to-r from-neon-purple to-neon-pink text-white font-semibold rounded-lg hover-glow transition-all duration-300 flex items-center justify-center space-x-2 disabled:opacity-50 text-sm md:text-base min-h-[48px] touch-manipulation"
                   >
-                    <Camera className="w-5 h-5 flex-shrink-0" />
-                    <span>{loading ? 'Processing...' : 'Check In with Face Verification'}</span>
+                    <Video className="w-5 h-5 flex-shrink-0" />
+                    <span>{loading ? 'Processing...' : 'Check In with Video Verification'}</span>
                   </button>
                 ) : !hasCheckedOut ? (
                   <button
@@ -382,8 +411,8 @@ const EmployeeAttendance = () => {
                 <div className="flex items-start space-x-2">
                   <ShieldCheck className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
                   <div className="text-xs text-blue-300">
-                    <p className="font-medium mb-1">Face + Location Verification Required</p>
-                    <p>Your face must match your registered profile and you must be within office premises to mark attendance.</p>
+                    <p className="font-medium mb-1">Video Verification with Liveness Detection</p>
+                    <p>Your live video is analyzed to ensure you are physically present. Static images and spoofing attempts are blocked.</p>
                   </div>
                 </div>
               </div>
@@ -519,10 +548,14 @@ const EmployeeAttendance = () => {
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="glass-morphism neon-border rounded-2xl p-6 max-w-lg w-full">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-white">Face Verification</h3>
+              <h3 className="text-xl font-bold text-white flex items-center space-x-2">
+                <Video className="w-5 h-5 text-neon-pink" />
+                <span>Video Face Verification</span>
+              </h3>
               <button
                 onClick={closeFaceVerification}
-                className="p-2 hover:bg-secondary-700 rounded-lg transition-colors"
+                disabled={isVerifying}
+                className="p-2 hover:bg-secondary-700 rounded-lg transition-colors disabled:opacity-50"
               >
                 <X className="w-5 h-5 text-white" />
               </button>
@@ -547,15 +580,37 @@ const EmployeeAttendance = () => {
                 </div>
               )}
 
+              {isVerifying && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/70">
+                  <div className="text-white text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-neon-pink mx-auto mb-4"></div>
+                    <p className="font-medium">{livenessMessage}</p>
+                    <div className="w-48 h-2 bg-secondary-700 rounded-full mt-4 mx-auto">
+                      <div 
+                        className="h-full bg-neon-pink rounded-full transition-all duration-300"
+                        style={{ width: `${verificationProgress}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {verificationStatus === 'success' && (
                 <div className="absolute inset-0 flex items-center justify-center bg-green-500/50">
-                  <CheckCircle className="w-16 h-16 text-white" />
+                  <div className="text-center">
+                    <CheckCircle className="w-16 h-16 text-white mx-auto" />
+                    <p className="text-white font-bold mt-2">Verified!</p>
+                  </div>
                 </div>
               )}
 
               {verificationStatus === 'failed' && (
                 <div className="absolute inset-0 flex items-center justify-center bg-red-500/50">
-                  <XCircle className="w-16 h-16 text-white" />
+                  <div className="text-center">
+                    <XCircle className="w-16 h-16 text-white mx-auto" />
+                    <p className="text-white font-bold mt-2">Verification Failed</p>
+                    <p className="text-white text-sm mt-1">{livenessMessage}</p>
+                  </div>
                 </div>
               )}
             </div>
@@ -563,21 +618,30 @@ const EmployeeAttendance = () => {
             <div className="flex items-center space-x-2 mb-4 p-3 bg-secondary-800/50 rounded-lg">
               <div className={`w-3 h-3 rounded-full ${cameraReady ? 'bg-green-400' : 'bg-yellow-400'} animate-pulse`}></div>
               <span className="text-sm text-secondary-400">
-                {cameraReady ? 'Camera ready - Position your face and click Verify' : 'Starting camera...'}
+                {cameraReady ? 'Look at the camera and click verify' : 'Starting camera...'}
               </span>
             </div>
 
             <button
-              onClick={captureFaceForVerification}
+              onClick={captureVideoFramesAndVerify}
               disabled={!cameraReady || isVerifying}
-              className="w-full px-6 py-3 bg-gradient-to-r from-neon-purple to-neon-pink text-white font-semibold rounded-lg hover-glow transition-all duration-300 flex items-center justify-center space-x-2 disabled:opacity-50"
+              className="w-full px-6 py-4 bg-gradient-to-r from-neon-pink to-neon-purple text-white font-semibold rounded-lg hover-glow transition-all duration-300 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Camera className="w-5 h-5" />
-              <span>{isVerifying ? 'Verifying...' : 'Verify Face & Check In'}</span>
+              {isVerifying ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  <span>Verifying...</span>
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="w-5 h-5" />
+                  <span>Verify & Check In</span>
+                </>
+              )}
             </button>
 
-            <p className="text-xs text-secondary-400 mt-2 text-center">
-              Face verification is processed server-side for accuracy
+            <p className="text-xs text-secondary-400 mt-3 text-center">
+              Your video is analyzed for liveness to prevent spoofing attempts
             </p>
           </div>
         </div>
