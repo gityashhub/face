@@ -4,6 +4,7 @@ import Message from '../models/Message.js';
 import { processBotMessage } from '../controllers/botController.js';
 import authSocket from '../middleware/authSocket.js';
 
+const onlineUsers = new Map();
 const userSockets = new Map();
 const processedMessages = new Map();
 const MESSAGE_DEDUP_TTL = 60000;
@@ -19,13 +20,24 @@ const cleanupProcessedMessages = () => {
 
 setInterval(cleanupProcessedMessages, 30000);
 
+const getOnlineUserIds = () => {
+  return Array.from(onlineUsers.keys());
+};
+
+const broadcastPresence = (io, namespace) => {
+  const onlineUserIds = getOnlineUserIds();
+  namespace.emit('presence:sync', { onlineUsers: onlineUserIds });
+};
+
 const setupChatSocket = (io) => {
   const employeeNamespace = io.of('/employee');
   employeeNamespace.use(authSocket);
 
   employeeNamespace.on('connection', (socket) => {
-    console.log(`Employee connected: ${socket.user.fullName} (${socket.id})`);
     const userId = socket.user._id.toString();
+    const userName = socket.user.fullName;
+    
+    console.log(`Employee connected: ${userName} (${socket.id})`);
     
     const existingSocketId = userSockets.get(userId);
     if (existingSocketId && existingSocketId !== socket.id) {
@@ -37,6 +49,19 @@ const setupChatSocket = (io) => {
     }
     
     userSockets.set(userId, socket.id);
+    onlineUsers.set(userId, {
+      socketId: socket.id,
+      name: userName,
+      lastSeen: new Date()
+    });
+
+    socket.emit('presence:sync', { onlineUsers: getOnlineUserIds() });
+    
+    socket.broadcast.emit('presence:update', {
+      userId: userId,
+      status: 'online',
+      name: userName
+    });
 
     socket.on('message', async (payload) => {
       const { from, fromName, to, text, clientMessageId } = payload;
@@ -142,10 +167,44 @@ const setupChatSocket = (io) => {
       }
     });
 
+    socket.on('typing:start', (data) => {
+      const { to } = data;
+      if (to && to !== userId) {
+        const recipientSocketId = userSockets.get(to);
+        if (recipientSocketId) {
+          io.of('/employee').to(recipientSocketId).emit('typing:start', {
+            from: userId,
+            fromName: userName
+          });
+        }
+      }
+    });
+
+    socket.on('typing:stop', (data) => {
+      const { to } = data;
+      if (to && to !== userId) {
+        const recipientSocketId = userSockets.get(to);
+        if (recipientSocketId) {
+          io.of('/employee').to(recipientSocketId).emit('typing:stop', {
+            from: userId
+          });
+        }
+      }
+    });
+
     socket.on('disconnect', () => {
-      console.log(`Employee disconnected: ${socket.user.fullName} (${socket.id})`);
+      console.log(`Employee disconnected: ${userName} (${socket.id})`);
+      
       if (userSockets.get(userId) === socket.id) {
         userSockets.delete(userId);
+        onlineUsers.delete(userId);
+        
+        socket.broadcast.emit('presence:update', {
+          userId: userId,
+          status: 'offline',
+          name: userName,
+          lastSeen: new Date()
+        });
       }
     });
   });
@@ -160,4 +219,5 @@ const setupChatSocket = (io) => {
   });
 };
 
+export { getOnlineUserIds };
 export default setupChatSocket;

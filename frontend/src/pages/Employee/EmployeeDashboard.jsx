@@ -28,6 +28,8 @@ const EmployeeDashboard = () => {
   const [botMessages, setBotMessages] = useState([]);
   const [selectedPeer, setSelectedPeer] = useState(null);
   const [peers, setPeers] = useState([]);
+  const [onlineUsers, setOnlineUsers] = useState(new Set());
+  const [typingUsers, setTypingUsers] = useState(new Set());
   const [newMessage, setNewMessage] = useState('');
   const [newBotMessage, setNewBotMessage] = useState('');
   const [loadingChat, setLoadingChat] = useState(false);
@@ -38,6 +40,7 @@ const EmployeeDashboard = () => {
   const botMessagesContainerRef = useRef(null);
   const botTimeoutRef = useRef(null);
   const isUserScrolledUp = useRef(false);
+  const typingTimeoutRef = useRef(null);
 
   const handleBotMessageChange = useCallback((e) => {
     setNewBotMessage(e.target.value);
@@ -45,7 +48,20 @@ const EmployeeDashboard = () => {
 
   const handleChatMessageChange = useCallback((e) => {
     setNewMessage(e.target.value);
-  }, []);
+    
+    if (socketRef.current?.connected && selectedPeer?._id) {
+      socketRef.current.emit('typing:start', { to: selectedPeer._id });
+      
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      typingTimeoutRef.current = setTimeout(() => {
+        if (socketRef.current?.connected && selectedPeer?._id) {
+          socketRef.current.emit('typing:stop', { to: selectedPeer._id });
+        }
+      }, 2000);
+    }
+  }, [selectedPeer]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -283,6 +299,38 @@ const EmployeeDashboard = () => {
         console.log('Socket reconnected after', attemptNumber, 'attempts');
       });
 
+      const handlePresenceSync = (data) => {
+        console.log('Presence sync:', data);
+        if (data.onlineUsers) {
+          setOnlineUsers(new Set(data.onlineUsers));
+        }
+      };
+
+      const handlePresenceUpdate = (data) => {
+        console.log('Presence update:', data);
+        setOnlineUsers(prev => {
+          const updated = new Set(prev);
+          if (data.status === 'online') {
+            updated.add(data.userId);
+          } else {
+            updated.delete(data.userId);
+          }
+          return updated;
+        });
+      };
+
+      const handleTypingStart = (data) => {
+        setTypingUsers(prev => new Set(prev).add(data.from));
+      };
+
+      const handleTypingStop = (data) => {
+        setTypingUsers(prev => {
+          const updated = new Set(prev);
+          updated.delete(data.from);
+          return updated;
+        });
+      };
+
       const handleMessage = (msg) => {
         console.log('Received message:', msg);
 
@@ -326,6 +374,10 @@ const EmployeeDashboard = () => {
 
       socket.on('message', handleMessage);
       socket.on('error', handleError);
+      socket.on('presence:sync', handlePresenceSync);
+      socket.on('presence:update', handlePresenceUpdate);
+      socket.on('typing:start', handleTypingStart);
+      socket.on('typing:stop', handleTypingStop);
 
       socketRef.current = socket;
 
@@ -335,6 +387,10 @@ const EmployeeDashboard = () => {
         socket.off('connect');
         socket.off('connect_error');
         socket.off('reconnect');
+        socket.off('presence:sync', handlePresenceSync);
+        socket.off('presence:update', handlePresenceUpdate);
+        socket.off('typing:start', handleTypingStart);
+        socket.off('typing:stop', handleTypingStop);
         socket.disconnect();
         socketRef.current = null;
       };
@@ -348,26 +404,26 @@ const EmployeeDashboard = () => {
 
   useEffect(() => {
     if (showChatModal && employeeData) {
-      const fetchPeers = async () => {
+      const fetchChatUsers = async () => {
         try {
-          const res = await employeeAPI.getEmployees();
+          const res = await employeeAPI.get('/messages/chat-users');
           if (res.data.success) {
-            const others = res.data.data.employees.filter(emp => {
-              const empId = emp._id || emp.user?._id;
-              const currentId = employeeData._id || employeeData.id;
-              return String(empId) !== String(currentId);
+            setPeers(res.data.data);
+            res.data.data.forEach(user => {
+              if (user.isOnline) {
+                setOnlineUsers(prev => new Set(prev).add(user._id));
+              }
             });
-            setPeers(others);
-            if (others.length > 0 && !selectedPeer) {
-              setSelectedPeer(others[0]);
+            if (res.data.data.length > 0 && !selectedPeer) {
+              setSelectedPeer(res.data.data[0]);
             }
           }
         } catch (err) {
-          console.error('Failed to load peers:', err);
+          console.error('Failed to load chat users:', err);
           toast.error('Could not load employee list for chat');
         }
       };
-      fetchPeers();
+      fetchChatUsers();
     }
   }, [showChatModal, employeeData]);
 
@@ -804,28 +860,56 @@ const EmployeeDashboard = () => {
               </div>
               <div className="flex flex-1 overflow-hidden">
                 <div className="w-1/3 border-r border-secondary-700 overflow-y-auto">
-                  <div className="p-3 text-sm text-secondary-400 font-medium">Colleagues</div>
-                  {peers.map(peer => (
-                    <div
-                      key={peer._id}
-                      onClick={() => setSelectedPeer(peer)}
-                      className={`p-3 border-l-4 cursor-pointer transition-colors ${
-                        selectedPeer?._id === peer._id
-                          ? 'border-neon-pink bg-secondary-800/50 text-white'
-                          : 'border-transparent text-secondary-400 hover:bg-secondary-800/30'
-                      }`}
-                    >
-                      <div className="font-medium">{peer.fullName || `${peer.personalInfo?.firstName} ${peer.personalInfo?.lastName}`}</div>
-                      <div className="text-xs text-secondary-500">{peer.workInfo?.position || 'Employee'}</div>
-                    </div>
-                  ))}
+                  <div className="p-3 text-sm text-secondary-400 font-medium">Colleagues ({peers.length})</div>
+                  {peers.length === 0 ? (
+                    <div className="p-4 text-center text-secondary-500 text-sm">No colleagues available</div>
+                  ) : (
+                    peers.map(peer => {
+                      const isOnline = onlineUsers.has(peer._id);
+                      const peerName = peer.name || peer.fullName || `${peer.personalInfo?.firstName || ''} ${peer.personalInfo?.lastName || ''}`.trim() || 'Unknown';
+                      return (
+                        <div
+                          key={peer._id}
+                          onClick={() => setSelectedPeer(peer)}
+                          className={`p-3 border-l-4 cursor-pointer transition-colors ${
+                            selectedPeer?._id === peer._id
+                              ? 'border-neon-pink bg-secondary-800/50 text-white'
+                              : 'border-transparent text-secondary-400 hover:bg-secondary-800/30'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="font-medium truncate">{peerName}</div>
+                            <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ml-2 ${isOnline ? 'bg-green-500' : 'bg-gray-500'}`} title={isOnline ? 'Online' : 'Offline'} />
+                          </div>
+                          <div className="text-xs text-secondary-500 flex items-center gap-1">
+                            <span>{peer.position || peer.workInfo?.position || 'Employee'}</span>
+                            {isOnline && <span className="text-green-400">• Online</span>}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
                 <div className="flex-1 flex flex-col">
                   {selectedPeer ? (
                     <>
                       <div className="p-3 border-b border-secondary-700 bg-secondary-800/30">
-                        <div className="font-bold text-white">{selectedPeer.fullName || `${selectedPeer.personalInfo?.firstName} ${selectedPeer.personalInfo?.lastName}`}</div>
-                        <div className="text-sm text-secondary-400">{selectedPeer.workInfo?.position}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="font-bold text-white">{selectedPeer.name || selectedPeer.fullName || `${selectedPeer.personalInfo?.firstName || ''} ${selectedPeer.personalInfo?.lastName || ''}`}</div>
+                          <div className={`w-2 h-2 rounded-full ${onlineUsers.has(selectedPeer._id) ? 'bg-green-500' : 'bg-gray-500'}`} />
+                        </div>
+                        <div className="text-sm text-secondary-400 flex items-center gap-2">
+                          <span>{selectedPeer.position || selectedPeer.workInfo?.position || 'Employee'}</span>
+                          {onlineUsers.has(selectedPeer._id) ? (
+                            typingUsers.has(selectedPeer._id) ? (
+                              <span className="text-neon-pink animate-pulse">typing...</span>
+                            ) : (
+                              <span className="text-green-400">Online</span>
+                            )
+                          ) : (
+                            <span className="text-gray-500">Offline</span>
+                          )}
+                        </div>
                       </div>
                       <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-secondary-900/30 relative">
                         {loadingChat ? (
@@ -877,7 +961,7 @@ const EmployeeDashboard = () => {
                           <input
                             type="text"
                             value={newMessage}
-                            onChange={(e) => setNewMessage(e.target.value)}
+                            onChange={handleChatMessageChange}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter' && !e.shiftKey) {
                                 e.preventDefault();
