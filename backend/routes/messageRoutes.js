@@ -12,27 +12,24 @@ router.get('/chat-users', async (req, res) => {
   try {
     const currentUserId = req.user.id;
     
+    // Only fetch other employees (exclude admins and current user)
     const users = await User.find({ 
       _id: { $ne: currentUserId },
-      role: { $in: ['employee', 'admin'] }
+      role: 'employee',
+      isActive: true
     })
-    .select('fullName personalInfo.firstName personalInfo.lastName workInfo.department workInfo.position avatar')
+    .select('name email employeeId profileImage role')
     .lean();
 
     const onlineUserIds = getOnlineUserIds();
     
     const chatUsers = users.map(user => {
-      const name = user.fullName || 
-        (user.personalInfo?.firstName && user.personalInfo?.lastName 
-          ? `${user.personalInfo.firstName} ${user.personalInfo.lastName}` 
-          : 'Unknown User');
-      
       return {
         _id: user._id.toString(),
-        name,
-        department: user.workInfo?.department || 'General',
-        position: user.workInfo?.position || 'Employee',
-        avatar: user.avatar || null,
+        name: user.name || 'Unknown User',
+        department: 'General',
+        position: 'Employee',
+        avatar: user.profileImage || null,
         isOnline: onlineUserIds.includes(user._id.toString())
       };
     });
@@ -66,8 +63,8 @@ router.get('/history/:peerId', async (req, res) => {
       ]
     })
     .sort({ timestamp: 1 })
-    .populate('from', 'fullName personalInfo.firstName personalInfo.lastName')
-    .populate('to', 'fullName personalInfo.firstName personalInfo.lastName');
+    .populate('from', 'name email')
+    .populate('to', 'name email');
 
     res.json({ success: true, data: messages });
   } catch (error) {
