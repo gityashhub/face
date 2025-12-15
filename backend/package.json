@@ -34,6 +34,7 @@
     "express-validator": "^7.2.1",
     "face-api.js": "^0.22.2",
     "form-data": "^4.0.5",
+    "groq-sdk": "^0.37.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.20.0",

@@ -563,237 +563,6 @@ const EmployeeDashboard = () => {
     }, 300);
   };
 
-  const ChatModal = () => (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-      {/* Enhanced backdrop with blur */}
-      <div className="fixed inset-0 bg-black/70 backdrop-blur-md" onClick={handleCloseChatModal} />
-
-      {/* Modal content */}
-      <div className="relative glass-morphism neon-border rounded-2xl w-full max-w-4xl h-[80vh] flex flex-col shadow-2xl">
-        <div className="flex items-center justify-between p-4 border-b border-secondary-700">
-          <h2 className="text-xl font-bold text-white flex items-center">
-            <MessageCircle className="w-5 h-5 mr-2 text-neon-pink" />
-            Employee Chat
-          </h2>
-          <button onClick={handleCloseChatModal} className="text-secondary-400 hover:text-white transition-colors">
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        <div className="flex flex-1 overflow-hidden">
-          <div className="w-1/3 border-r border-secondary-700 overflow-y-auto">
-            <div className="p-3 text-sm text-secondary-400 font-medium">Colleagues</div>
-            {peers.map(peer => (
-              <div
-                key={peer._id}
-                onClick={() => setSelectedPeer(peer)}
-                className={`p-3 border-l-4 cursor-pointer transition-colors ${
-                  selectedPeer?._id === peer._id
-                    ? 'border-neon-pink bg-secondary-800/50 text-white'
-                    : 'border-transparent text-secondary-400 hover:bg-secondary-800/30'
-                }`}
-              >
-                <div className="font-medium">{peer.fullName || `${peer.personalInfo?.firstName} ${peer.personalInfo?.lastName}`}</div>
-                <div className="text-xs text-secondary-500">{peer.workInfo?.position || 'Employee'}</div>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex-1 flex flex-col">
-            {selectedPeer ? (
-              <>
-                <div className="p-3 border-b border-secondary-700 bg-secondary-800/30">
-                  <div className="font-bold text-white">{selectedPeer.fullName || `${selectedPeer.personalInfo?.firstName} ${selectedPeer.personalInfo?.lastName}`}</div>
-                  <div className="text-sm text-secondary-400">{selectedPeer.workInfo?.position}</div>
-                </div>
-                <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-secondary-900/30 relative">
-                  {loadingChat ? (
-                    <div className="flex items-center justify-center h-full">
-                      <div className="text-secondary-500">Loading chat history...</div>
-                    </div>
-                  ) : (
-                    <>
-                      {(() => {
-                        const currentUserId = String(employeeData.id || employeeData._id);
-                        const selectedPeerId = String(selectedPeer._id || selectedPeer.user?._id);
-
-                        const filteredMessages = chatMessages.filter(msg => {
-                          // Filter to show only messages between current user and selected peer
-                          const msgFrom = String(msg.from || '');
-                          const msgTo = String(msg.to || '');
-
-                          const isConversation = (
-                            (msgFrom === currentUserId && msgTo === selectedPeerId) ||
-                            (msgFrom === selectedPeerId && msgTo === currentUserId)
-                          );
-
-                          return isConversation;
-                        });
-
-                        if (filteredMessages.length === 0) {
-                          return (
-                            <div className="flex flex-col items-center justify-center h-full text-secondary-500">
-                              <MessageCircle className="w-16 h-16 mb-3 opacity-30" />
-                              <p className="text-sm">No messages yet</p>
-                              <p className="text-xs mt-1">Start a conversation with {selectedPeer.fullName || `${selectedPeer.personalInfo?.firstName} ${selectedPeer.personalInfo?.lastName}`}</p>
-                            </div>
-                          );
-                        }
-
-                        return filteredMessages.map((msg, idx) => (
-                          <div
-                            key={msg._id || `msg-${idx}`}
-                            className={`flex ${msg.self ? 'justify-end' : 'justify-start'}`}
-                          >
-                            <div
-                              className={`max-w-xs md:max-w-md p-3 rounded-lg ${
-                                msg.self
-                                  ? 'bg-gradient-to-r from-neon-pink to-neon-purple text-white'
-                                  : 'bg-secondary-800 text-white'
-                              }`}
-                            >
-                              {!msg.self && (
-                                <div className="text-xs text-secondary-400 mb-1 font-medium">
-                                  {msg.fromName || selectedPeer.fullName || `${selectedPeer.personalInfo?.firstName} ${selectedPeer.personalInfo?.lastName}`}
-                                </div>
-                              )}
-                              <div className="text-sm break-words">{msg.text}</div>
-                              <div className={`text-xs mt-1 ${msg.self ? 'text-pink-200' : 'text-secondary-400'}`}>
-                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </div>
-                            </div>
-                          </div>
-                        ));
-                      })()}
-                      <div ref={messagesEndRef} />
-                    </>
-                  )}
-                </div>
-                <div className="p-3 border-t border-secondary-700">
-                  <form onSubmit={(e) => { e.preventDefault(); sendMessage(); }} className="flex">
-                    <input
-                      type="text"
-                      value={newMessage}
-                      onChange={handleChatMessageChange}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          sendMessage();
-                        }
-                      }}
-                      placeholder="Type a message..."
-                      className="flex-1 px-4 py-2 bg-secondary-800 border border-secondary-600 rounded-l-lg text-white placeholder-secondary-500 focus:outline-none focus:ring-2 focus:ring-neon-pink focus:border-transparent"
-                      autoComplete="off"
-                    />
-                    <button
-                      type="submit"
-                      onClick={sendMessage}
-                      disabled={!newMessage.trim()}
-                      className="px-4 bg-gradient-to-r from-neon-pink to-neon-purple text-white rounded-r-lg disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
-                    >
-                      <Send className="w-4 h-4" />
-                    </button>
-                  </form>
-                </div>
-              </>
-            ) : (
-              <div className="flex-1 flex items-center justify-center text-secondary-500">
-                Select a colleague to start chatting
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const BotModal = () => (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-      {/* Enhanced backdrop with blur */}
-      <div className="fixed inset-0 bg-black/70 backdrop-blur-md" onClick={handleCloseBotModal} />
-
-      {/* Modal content */}
-      <div className="relative glass-morphism neon-border rounded-2xl w-full max-w-md h-[70vh] flex flex-col shadow-2xl">
-        <div className="flex items-center justify-between p-4 border-b border-secondary-700">
-          <h2 className="text-xl font-bold text-white flex items-center">
-            <Bot className="w-5 h-5 mr-2 text-blue-400" />
-            HR Assistant
-          </h2>
-          <button onClick={handleCloseBotModal} className="text-secondary-400 hover:text-white transition-colors">
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-        <div
-          ref={botMessagesContainerRef}
-          className="flex-1 overflow-y-auto p-4 space-y-3 bg-secondary-900/30 relative"
-          onScroll={(e) => {
-            const { scrollTop, clientHeight, scrollHeight } = botMessagesContainerRef.current;
-            isUserScrolledUp.current = scrollTop + clientHeight < scrollHeight - 50;
-          }}
-        >
-          {loadingBot ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-secondary-500 flex items-center">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400 mr-2"></div>
-                Bot is thinking...
-              </div>
-            </div>
-          ) : (
-            <>
-              {botMessages.map((msg, idx) => (
-                <div
-                  key={msg._id || idx}
-                  className={`max-w-xs p-3 rounded-lg ${
-                    msg.self
-                      ? 'ml-auto bg-gradient-to-r from-neon-pink to-neon-purple text-white'
-                      : msg.fromBot
-                        ? 'mr-auto bg-blue-600/20 border border-blue-500/30 text-white'
-                        : 'mr-auto bg-secondary-800 text-white'
-                  }`}
-                >
-                  <div className="text-sm">
-                    {renderMessageText(msg.text)}
-                  </div>
-                  <div className={`text-xs mt-1 ${msg.self ? 'text-pink-200' : 'text-blue-200'}`}>
-                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </div>
-                </div>
-              ))}
-              <div ref={botMessagesEndRef} />
-            </>
-          )}
-        </div>
-        <div className="p-3 border-t border-secondary-700">
-          <div className="flex">
-            <input
-              key="bot-input"
-              type="text"
-              value={newBotMessage}
-              onChange={handleBotMessageChange}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  sendBotMessage();
-                }
-              }}
-              placeholder="Ask HR Assistant..."
-              className="flex-1 px-4 py-2 bg-secondary-800 border border-secondary-600 rounded-l-lg text-white focus:outline-none focus:ring-1 focus:ring-blue-400"
-              disabled={loadingBot}
-              autoFocus
-            />
-            <button
-              onClick={sendBotMessage}
-              disabled={!newBotMessage.trim() || loadingBot}
-              className="px-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-r-lg disabled:opacity-50"
-            >
-              <Send className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <EmployeeLayout employeeData={employeeData}>
       <div className="space-y-6">
@@ -989,8 +758,216 @@ const EmployeeDashboard = () => {
           </div>
         </div>
 
-        {showChatModal && <ChatModal />}
-        {showBotModal && <BotModal />}
+        {/* Chat Modal - rendered inline to prevent remounting */}
+        {showChatModal && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-md" onClick={handleCloseChatModal} />
+            <div className="relative glass-morphism neon-border rounded-2xl w-full max-w-4xl h-[80vh] flex flex-col shadow-2xl">
+              <div className="flex items-center justify-between p-4 border-b border-secondary-700">
+                <h2 className="text-xl font-bold text-white flex items-center">
+                  <MessageCircle className="w-5 h-5 mr-2 text-neon-pink" />
+                  Employee Chat
+                </h2>
+                <button onClick={handleCloseChatModal} className="text-secondary-400 hover:text-white transition-colors">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <div className="flex flex-1 overflow-hidden">
+                <div className="w-1/3 border-r border-secondary-700 overflow-y-auto">
+                  <div className="p-3 text-sm text-secondary-400 font-medium">Colleagues</div>
+                  {peers.map(peer => (
+                    <div
+                      key={peer._id}
+                      onClick={() => setSelectedPeer(peer)}
+                      className={`p-3 border-l-4 cursor-pointer transition-colors ${
+                        selectedPeer?._id === peer._id
+                          ? 'border-neon-pink bg-secondary-800/50 text-white'
+                          : 'border-transparent text-secondary-400 hover:bg-secondary-800/30'
+                      }`}
+                    >
+                      <div className="font-medium">{peer.fullName || `${peer.personalInfo?.firstName} ${peer.personalInfo?.lastName}`}</div>
+                      <div className="text-xs text-secondary-500">{peer.workInfo?.position || 'Employee'}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex-1 flex flex-col">
+                  {selectedPeer ? (
+                    <>
+                      <div className="p-3 border-b border-secondary-700 bg-secondary-800/30">
+                        <div className="font-bold text-white">{selectedPeer.fullName || `${selectedPeer.personalInfo?.firstName} ${selectedPeer.personalInfo?.lastName}`}</div>
+                        <div className="text-sm text-secondary-400">{selectedPeer.workInfo?.position}</div>
+                      </div>
+                      <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-secondary-900/30 relative">
+                        {loadingChat ? (
+                          <div className="flex items-center justify-center h-full">
+                            <div className="text-secondary-500">Loading chat history...</div>
+                          </div>
+                        ) : (
+                          <>
+                            {(() => {
+                              const currentUserId = String(employeeData.id || employeeData._id);
+                              const selectedPeerId = String(selectedPeer._id || selectedPeer.user?._id);
+                              const filteredMessages = chatMessages.filter(msg => {
+                                const msgFrom = String(msg.from || '');
+                                const msgTo = String(msg.to || '');
+                                return (msgFrom === currentUserId && msgTo === selectedPeerId) ||
+                                       (msgFrom === selectedPeerId && msgTo === currentUserId);
+                              });
+                              if (filteredMessages.length === 0) {
+                                return (
+                                  <div className="flex flex-col items-center justify-center h-full text-secondary-500">
+                                    <MessageCircle className="w-16 h-16 mb-3 opacity-30" />
+                                    <p className="text-sm">No messages yet</p>
+                                    <p className="text-xs mt-1">Start a conversation with {selectedPeer.fullName || `${selectedPeer.personalInfo?.firstName} ${selectedPeer.personalInfo?.lastName}`}</p>
+                                  </div>
+                                );
+                              }
+                              return filteredMessages.map((msg, idx) => (
+                                <div key={msg._id || `msg-${idx}`} className={`flex ${msg.self ? 'justify-end' : 'justify-start'}`}>
+                                  <div className={`max-w-xs md:max-w-md p-3 rounded-lg ${msg.self ? 'bg-gradient-to-r from-neon-pink to-neon-purple text-white' : 'bg-secondary-800 text-white'}`}>
+                                    {!msg.self && (
+                                      <div className="text-xs text-secondary-400 mb-1 font-medium">
+                                        {msg.fromName || selectedPeer.fullName || `${selectedPeer.personalInfo?.firstName} ${selectedPeer.personalInfo?.lastName}`}
+                                      </div>
+                                    )}
+                                    <div className="text-sm break-words">{msg.text}</div>
+                                    <div className={`text-xs mt-1 ${msg.self ? 'text-pink-200' : 'text-secondary-400'}`}>
+                                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </div>
+                                  </div>
+                                </div>
+                              ));
+                            })()}
+                            <div ref={messagesEndRef} />
+                          </>
+                        )}
+                      </div>
+                      <div className="p-3 border-t border-secondary-700">
+                        <form onSubmit={(e) => { e.preventDefault(); sendMessage(); }} className="flex">
+                          <input
+                            type="text"
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                sendMessage();
+                              }
+                            }}
+                            placeholder="Type a message..."
+                            className="flex-1 px-4 py-2 bg-secondary-800 border border-secondary-600 rounded-l-lg text-white placeholder-secondary-500 focus:outline-none focus:ring-2 focus:ring-neon-pink focus:border-transparent"
+                            autoComplete="off"
+                          />
+                          <button
+                            type="submit"
+                            disabled={!newMessage.trim()}
+                            className="px-4 bg-gradient-to-r from-neon-pink to-neon-purple text-white rounded-r-lg disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
+                          >
+                            <Send className="w-4 h-4" />
+                          </button>
+                        </form>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center text-secondary-500">
+                      Select a colleague to start chatting
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Bot Modal - rendered inline to prevent remounting */}
+        {showBotModal && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-md" onClick={handleCloseBotModal} />
+            <div className="relative glass-morphism neon-border rounded-2xl w-full max-w-md h-[70vh] flex flex-col shadow-2xl">
+              <div className="flex items-center justify-between p-4 border-b border-secondary-700">
+                <h2 className="text-xl font-bold text-white flex items-center">
+                  <Bot className="w-5 h-5 mr-2 text-blue-400" />
+                  HR Assistant
+                </h2>
+                <button onClick={handleCloseBotModal} className="text-secondary-400 hover:text-white transition-colors">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <div
+                ref={botMessagesContainerRef}
+                className="flex-1 overflow-y-auto p-4 space-y-3 bg-secondary-900/30 relative"
+                onScroll={() => {
+                  if (botMessagesContainerRef.current) {
+                    const { scrollTop, clientHeight, scrollHeight } = botMessagesContainerRef.current;
+                    isUserScrolledUp.current = scrollTop + clientHeight < scrollHeight - 50;
+                  }
+                }}
+              >
+                {botMessages.length === 0 && !loadingBot ? (
+                  <div className="flex flex-col items-center justify-center h-full text-secondary-500">
+                    <Bot className="w-16 h-16 mb-3 opacity-30" />
+                    <p className="text-sm">Hi! I'm your HR Assistant</p>
+                    <p className="text-xs mt-1 text-center px-4">Ask me about leave policies, attendance, salary slips, or any HR-related questions.</p>
+                  </div>
+                ) : (
+                  <>
+                    {botMessages.map((msg, idx) => (
+                      <div
+                        key={msg._id || idx}
+                        className={`max-w-xs p-3 rounded-lg ${
+                          msg.self
+                            ? 'ml-auto bg-gradient-to-r from-neon-pink to-neon-purple text-white'
+                            : msg.fromBot
+                              ? 'mr-auto bg-blue-600/20 border border-blue-500/30 text-white'
+                              : 'mr-auto bg-secondary-800 text-white'
+                        }`}
+                      >
+                        <div className="text-sm">
+                          {renderMessageText(msg.text)}
+                        </div>
+                        <div className={`text-xs mt-1 ${msg.self ? 'text-pink-200' : 'text-blue-200'}`}>
+                          {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </div>
+                    ))}
+                    <div ref={botMessagesEndRef} />
+                  </>
+                )}
+                {loadingBot && (
+                  <div className="flex items-center text-secondary-500 p-3">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400 mr-2"></div>
+                    Bot is thinking...
+                  </div>
+                )}
+              </div>
+              <div className="p-3 border-t border-secondary-700">
+                <div className="flex">
+                  <input
+                    type="text"
+                    value={newBotMessage}
+                    onChange={(e) => setNewBotMessage(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendBotMessage();
+                      }
+                    }}
+                    placeholder="Ask HR Assistant..."
+                    className="flex-1 px-4 py-2 bg-secondary-800 border border-secondary-600 rounded-l-lg text-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+                    disabled={loadingBot}
+                  />
+                  <button
+                    onClick={sendBotMessage}
+                    disabled={!newBotMessage.trim() || loadingBot}
+                    className="px-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-r-lg disabled:opacity-50"
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </EmployeeLayout>
   );

@@ -1,4 +1,5 @@
 // backend/controllers/botController.js
+import Groq from 'groq-sdk';
 import User from '../models/User.js';
 import Attendance from '../models/Attendance.js';
 import Leave from '../models/Leave.js';
@@ -7,41 +8,43 @@ import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
-// HR FAQs
-const HR_FAQS = {
-  'leave policy': 'Our leave policy allows 21 annual leaves, 10 sick leaves, and 5 casual leaves per year. Unused leaves can be carried forward up to a maximum of 15 days.',
-  'salary credit': 'Salaries are credited on the 1st of every month to your registered bank account. If the 1st is a holiday, it will be credited on the next working day.',
-  'appraisal': 'Performance appraisals are conducted annually in December. Ratings are based on KPIs, peer reviews, and manager feedback.',
-  'working hours': 'Standard working hours are 9:00 AM to 6:00 PM, Monday to Friday. Flexible hours can be arranged with manager approval.'
+const HR_CONTEXT = `You are an HR Assistant bot for an Employee Management System. You can ONLY help with HR-related topics. You must be helpful, professional, and concise.
+
+Your allowed topics and capabilities:
+1. **Leave Policies**: Annual leave (21 days), Sick leave (10 days), Casual leave (5 days). Unused leaves can carry forward up to 15 days.
+2. **Salary Information**: Salaries credited on 1st of every month. If holiday, next working day.
+3. **Working Hours**: Standard hours are 9:00 AM to 6:00 PM, Monday to Friday. Flexible hours possible with manager approval.
+4. **Performance Appraisals**: Conducted annually in December. Based on KPIs, peer reviews, and manager feedback.
+5. **Attendance Queries**: Help employees understand their attendance records and policies.
+6. **Leave Applications**: Guide on how to apply for leave through the system.
+7. **Document Requests**: Can generate salary slips and appraisal letters.
+8. **Company Policies**: General HR policies and guidelines.
+9. **Benefits Information**: Employee benefits and perks.
+10. **Onboarding/Offboarding**: Process information for new joiners and exits.
+
+IMPORTANT RULES:
+- ONLY respond to HR-related questions
+- If asked about non-HR topics (coding, general knowledge, politics, entertainment, etc.), politely decline and redirect to HR topics
+- Keep responses concise and professional
+- Use markdown formatting for better readability
+- Be friendly but maintain professional tone
+- If you cannot answer something, suggest contacting the HR department directly
+
+For document generation requests, respond with the appropriate action marker:
+- For salary slip: Include "[GENERATE_SALARY_SLIP]" in your response
+- For appraisal letter: Include "[GENERATE_APPRAISAL_LETTER]" in your response`;
+
+let groqClient = null;
+
+const getGroqClient = () => {
+  if (!groqClient && process.env.GROQ_API_KEY) {
+    groqClient = new Groq({
+      apiKey: process.env.GROQ_API_KEY
+    });
+  }
+  return groqClient;
 };
 
-const detectIntent = (message) => {
-  const lowerMessage = message.toLowerCase();
-  
-  // Greeting detection
-  if (lowerMessage.includes('hello') || 
-      lowerMessage.includes('hi') || 
-      lowerMessage.includes('hey') || 
-      lowerMessage.includes('good morning') || 
-      lowerMessage.includes('good evening') ||
-      lowerMessage.includes('how are you')) {
-    return 'greeting';
-  }
-
-  if (lowerMessage.includes('attendance') || lowerMessage.includes('report')) return 'attendance_report';
-  if (lowerMessage.includes('leave day') || lowerMessage.includes('leave balance')) return 'leave_balance';
-  for (const key of Object.keys(HR_FAQS)) {
-    if (lowerMessage.includes(key)) return 'hr_faq';
-  }
-  if (lowerMessage.includes('salary slip') || lowerMessage.includes('generate salary')) return 'generate_salary_slip';
-  if (lowerMessage.includes('appraisal letter')) return 'generate_appraisal_letter';
-  if (lowerMessage.includes('leave approval')) return 'generate_leave_approval';
-  if (lowerMessage.includes('apply for leave')) return 'apply_leave';
-  if (lowerMessage.includes('update details')) return 'update_details';
-  return 'unknown';
-};
-
-// Helper to get safe employee ID
 const getEmployeeId = (user) => {
   return user.employeeId?.employeeId || 
          user.employeeId?._id || 
@@ -50,9 +53,8 @@ const getEmployeeId = (user) => {
          'unknown';
 };
 
-// PDF Generators
 const generateSalarySlipPDF = async (user, month = 'current', year = new Date().getFullYear()) => {
-  const PDFDocument = require('pdfkit');
+  const PDFDocument = (await import('pdfkit')).default;
   const empId = getEmployeeId(user);
   const fileName = `salary_slip_${empId}_${month}_${year}_${uuidv4().slice(0,8)}.pdf`;
   const tempDir = path.join(process.cwd(), 'temp');
@@ -83,7 +85,7 @@ const generateSalarySlipPDF = async (user, month = 'current', year = new Date().
 };
 
 const generateAppraisalLetterPDF = async (user) => {
-  const PDFDocument = require('pdfkit');
+  const PDFDocument = (await import('pdfkit')).default;
   const empId = getEmployeeId(user);
   const fileName = `appraisal_letter_${empId}_${uuidv4().slice(0,8)}.pdf`;
   const tempDir = path.join(process.cwd(), 'temp');
@@ -112,7 +114,54 @@ const generateAppraisalLetterPDF = async (user) => {
   });
 };
 
-// Core logic: returns { response, intent }
+const getEmployeeContext = async (userId) => {
+  try {
+    const user = await User.findById(userId).populate('employeeId');
+    if (!user) return '';
+
+    let contextParts = [];
+    contextParts.push(`Employee Name: ${user.fullName || 'Unknown'}`);
+    contextParts.push(`Employee ID: ${getEmployeeId(user)}`);
+
+    const startDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const endDate = new Date();
+    
+    let attendance = await Attendance.find({
+      $or: [
+        { employeeId: user.employeeId?._id || userId },
+        { user: userId },
+        { employee: userId }
+      ],
+      date: { $gte: startDate, $lte: endDate }
+    });
+    
+    if (attendance.length > 0) {
+      const present = attendance.filter(a => 
+        ['present', 'Present', 'late', 'Late'].includes(a.status)
+      ).length;
+      contextParts.push(`Attendance This Month: ${present} present out of ${attendance.length} working days`);
+    }
+
+    let leaves = await Leave.find({ 
+      $or: [
+        { employeeId: user.employeeId?._id || userId },
+        { user: userId },
+        { employee: userId }
+      ],
+      status: 'approved' 
+    });
+    
+    const usedLeaves = leaves.length;
+    const remainingLeaves = 21 - usedLeaves;
+    contextParts.push(`Leave Balance: ${remainingLeaves} annual leaves remaining (${usedLeaves} used)`);
+
+    return contextParts.join('\n');
+  } catch (error) {
+    console.error('Error getting employee context:', error);
+    return '';
+  }
+};
+
 export const processBotMessage = async (text, userId) => {
   try {
     console.log('Bot processing message:', text, 'for user:', userId);
@@ -126,133 +175,64 @@ export const processBotMessage = async (text, userId) => {
       };
     }
 
-    const intent = detectIntent(text);
+    const employeeContext = await getEmployeeContext(userId);
+    
     let response = '';
+    
+    const groq = getGroqClient();
+    if (!groq) {
+      response = getFallbackResponse(text, user, employeeContext);
+    } else {
+      try {
+        const chatCompletion = await groq.chat.completions.create({
+          messages: [
+            {
+              role: 'system',
+              content: HR_CONTEXT
+            },
+            {
+              role: 'system',
+              content: `Current Employee Information:\n${employeeContext}`
+            },
+            {
+              role: 'user',
+              content: text
+            }
+          ],
+          model: 'llama-3.1-8b-instant',
+          temperature: 0.7,
+          max_tokens: 1024,
+          top_p: 1,
+          stream: false
+        });
 
-    switch (intent) {
-      case 'greeting':
-        response = `Hello! 👋 I'm your HR Assistant. How can I help you today?\n\nYou can ask me about:\n• **Attendance** or **leave balance**\n• **HR policies** (leave, salary, working hours)\n• **Generate documents** (salary slip, appraisal letter)\n• **Apply for leave** or **update personal details**`;
-        break;
-
-      case 'attendance_report':
-        try {
-          const startDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-          const endDate = new Date();
-          
-          // Try multiple field names to find the correct one
-          let attendance = [];
-          
-          // Method 1: Try employeeId field
-          attendance = await Attendance.find({
-            employeeId: user.employeeId?._id || userId,
-            date: { $gte: startDate, $lte: endDate }
-          });
-          
-          // Method 2: If no results, try user field
-          if (attendance.length === 0) {
-            attendance = await Attendance.find({
-              user: userId,
-              date: { $gte: startDate, $lte: endDate }
-            });
+        response = chatCompletion.choices[0]?.message?.content || 'Sorry, I could not generate a response. Please try again.';
+        
+        if (response.includes('[GENERATE_SALARY_SLIP]')) {
+          try {
+            const fileName = await generateSalarySlipPDF(user);
+            response = response.replace('[GENERATE_SALARY_SLIP]', `\n\n✅ Your salary slip is ready! [Download here](/api/bot/download/${fileName})`);
+          } catch (err) {
+            console.error('Salary slip generation error:', err);
+            response = response.replace('[GENERATE_SALARY_SLIP]', '\n\n❌ Failed to generate salary slip. Please try again later.');
           }
-          
-          // Method 3: If still no results, try employee field
-          if (attendance.length === 0) {
-            attendance = await Attendance.find({
-              employee: userId,
-              date: { $gte: startDate, $lte: endDate }
-            });
+        }
+        
+        if (response.includes('[GENERATE_APPRAISAL_LETTER]')) {
+          try {
+            const fileName = await generateAppraisalLetterPDF(user);
+            response = response.replace('[GENERATE_APPRAISAL_LETTER]', `\n\n✅ Your appraisal letter is ready! [Download here](/api/bot/download/${fileName})`);
+          } catch (err) {
+            console.error('Appraisal letter generation error:', err);
+            response = response.replace('[GENERATE_APPRAISAL_LETTER]', '\n\n❌ Failed to generate appraisal letter. Please try again later.');
           }
-          
-          console.log('Attendance records found:', attendance.length);
-          
-          const present = attendance.filter(a => 
-            ['present', 'Present', 'late', 'Late'].includes(a.status)
-          ).length;
-          
-          response = attendance.length > 0 
-            ? `Your attendance this month: ${present} present out of ${attendance.length} working days.`
-            : 'No attendance records found for this month.';
-        } catch (err) {
-          console.error('Attendance query error:', err);
-          response = 'Sorry, I cannot access your attendance records right now. Please try again later.';
         }
-        break;
-
-      case 'leave_balance':
-        try {
-          let leaves = [];
-          
-          // Method 1: Try employeeId field
-          leaves = await Leave.find({ 
-            employeeId: user.employeeId?._id || userId,
-            status: 'approved' 
-          });
-          
-          // Method 2: If no results, try user field
-          if (leaves.length === 0) {
-            leaves = await Leave.find({ 
-              user: userId,
-              status: 'approved' 
-            });
-          }
-          
-          // Method 3: If still no results, try employee field
-          if (leaves.length === 0) {
-            leaves = await Leave.find({ 
-              employee: userId,
-              status: 'approved' 
-            });
-          }
-          
-          console.log('Approved leaves found:', leaves.length);
-          
-          const remaining = 21 - leaves.length;
-          response = `You have ${remaining} annual leave days remaining this year.`;
-        } catch (err) {
-          console.error('Leave query error:', err);
-          response = 'Sorry, I cannot access your leave records right now. Please try again later.';
-        }
-        break;
-
-      case 'hr_faq':
-        const faqKey = Object.keys(HR_FAQS).find(key => text.toLowerCase().includes(key));
-        response = faqKey ? HR_FAQS[faqKey] : 'I can help with HR policies. Ask about leave policy, salary credit, appraisal, or working hours.';
-        break;
-
-      case 'generate_salary_slip':
-        try {
-          const fileName = await generateSalarySlipPDF(user);
-          response = `✅ Your salary slip is ready! [Download here](/api/bot/download/${fileName})`;
-        } catch (err) {
-          console.error('Salary slip error:', err);
-          response = '❌ Failed to generate salary slip. Please try again later.';
-        }
-        break;
-
-      case 'generate_appraisal_letter':
-        try {
-          const fileName = await generateAppraisalLetterPDF(user);
-          response = `✅ Your appraisal letter is ready! [Download here](/api/bot/download/${fileName})`;
-        } catch (err) {
-          console.error('Appraisal letter error:', err);
-          response = '❌ Failed to generate appraisal letter. Please try again later.';
-        }
-        break;
-
-      case 'apply_leave':
-        response = 'To apply for leave, please use the "Apply Leave" button in your dashboard or specify the dates and reason for your leave request.';
-        break;
-
-      case 'update_details':
-        response = 'To update your personal details, please go to your profile settings in the dashboard or contact HR support directly.';
-        break;
-
-      default:
-        response = 'I can help with attendance, leave balance, HR policies, or documents like salary slips. Try asking something like:\n• "Show my attendance"\n• "How many leave days do I have?"\n• "What\'s the leave policy?"\n• "Generate salary slip"';
+      } catch (groqError) {
+        console.error('Groq API error:', groqError);
+        response = getFallbackResponse(text, user, employeeContext);
+      }
     }
 
-    // Save bot message to DB
     await new Message({
       from: null,
       to: userId,
@@ -260,7 +240,7 @@ export const processBotMessage = async (text, userId) => {
       fromBot: true
     }).save();
 
-    return { response, intent };
+    return { response, intent: 'groq_response' };
 
   } catch (error) {
     console.error('Bot processing error:', error);
@@ -271,14 +251,62 @@ export const processBotMessage = async (text, userId) => {
   }
 };
 
-// Express route handler
+const getFallbackResponse = (text, user, employeeContext) => {
+  const lowerText = text.toLowerCase();
+  
+  if (lowerText.includes('hello') || lowerText.includes('hi') || lowerText.includes('hey')) {
+    return `Hello! 👋 I'm your HR Assistant. How can I help you today?\n\nYou can ask me about:\n• **Attendance** or **leave balance**\n• **HR policies** (leave, salary, working hours)\n• **Generate documents** (salary slip, appraisal letter)\n• **Apply for leave** or **update personal details**`;
+  }
+  
+  if (lowerText.includes('leave') && (lowerText.includes('policy') || lowerText.includes('policies'))) {
+    return 'Our leave policy allows **21 annual leaves**, **10 sick leaves**, and **5 casual leaves** per year. Unused leaves can be carried forward up to a maximum of 15 days.';
+  }
+  
+  if (lowerText.includes('leave') && (lowerText.includes('balance') || lowerText.includes('remaining') || lowerText.includes('days'))) {
+    const match = employeeContext.match(/Leave Balance: (\d+) annual leaves remaining/);
+    if (match) {
+      return `You have **${match[1]} annual leave days** remaining this year.`;
+    }
+    return 'I cannot access your leave records right now. Please check your dashboard or contact HR.';
+  }
+  
+  if (lowerText.includes('attendance')) {
+    const match = employeeContext.match(/Attendance This Month: (\d+) present out of (\d+)/);
+    if (match) {
+      return `Your attendance this month: **${match[1]} present** out of ${match[2]} working days.`;
+    }
+    return 'No attendance records found for this month.';
+  }
+  
+  if (lowerText.includes('salary') && lowerText.includes('slip')) {
+    return 'I can generate your salary slip! Please wait while I prepare it... [GENERATE_SALARY_SLIP]';
+  }
+  
+  if (lowerText.includes('appraisal') && lowerText.includes('letter')) {
+    return 'I can generate your appraisal letter! Please wait... [GENERATE_APPRAISAL_LETTER]';
+  }
+  
+  if (lowerText.includes('salary') || lowerText.includes('pay')) {
+    return 'Salaries are credited on the **1st of every month** to your registered bank account. If the 1st is a holiday, it will be credited on the next working day.';
+  }
+  
+  if (lowerText.includes('working hours') || lowerText.includes('work hours')) {
+    return 'Standard working hours are **9:00 AM to 6:00 PM**, Monday to Friday. Flexible hours can be arranged with manager approval.';
+  }
+  
+  if (lowerText.includes('appraisal') || lowerText.includes('performance')) {
+    return 'Performance appraisals are conducted **annually in December**. Ratings are based on KPIs, peer reviews, and manager feedback.';
+  }
+  
+  return 'I can help with HR-related questions about:\n• **Leave policies** and balance\n• **Attendance** records\n• **Salary** information\n• **Working hours** and policies\n• **Document generation** (salary slip, appraisal letter)\n\nPlease ask me about any of these topics!';
+};
+
 export const processMessage = async (req, res) => {
   const { text, userId } = req.body;
 
-  // Save user message
   await new Message({
     from: userId,
-    to: userId, // Self-message for bot conversation
+    to: userId,
     text: text.trim()
   }).save();
 
@@ -296,7 +324,7 @@ export const getBotHistory = async (req, res) => {
       ]
     }).sort({ timestamp: 1 });
 
-    res.json({ success: true,  messages });
+    res.json({ success: true, messages });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to load history' });
   }
