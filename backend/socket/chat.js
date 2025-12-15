@@ -5,6 +5,19 @@ import { processBotMessage } from '../controllers/botController.js';
 import authSocket from '../middleware/authSocket.js';
 
 const userSockets = new Map();
+const processedMessages = new Map();
+const MESSAGE_DEDUP_TTL = 60000;
+
+const cleanupProcessedMessages = () => {
+  const now = Date.now();
+  for (const [key, timestamp] of processedMessages.entries()) {
+    if (now - timestamp > MESSAGE_DEDUP_TTL) {
+      processedMessages.delete(key);
+    }
+  }
+};
+
+setInterval(cleanupProcessedMessages, 30000);
 
 const setupChatSocket = (io) => {
   const employeeNamespace = io.of('/employee');
@@ -13,14 +26,39 @@ const setupChatSocket = (io) => {
   employeeNamespace.on('connection', (socket) => {
     console.log(`Employee connected: ${socket.user.fullName} (${socket.id})`);
     const userId = socket.user._id.toString();
+    
+    const existingSocketId = userSockets.get(userId);
+    if (existingSocketId && existingSocketId !== socket.id) {
+      const existingSocket = employeeNamespace.sockets.get(existingSocketId);
+      if (existingSocket) {
+        console.log(`Disconnecting previous socket for user ${userId}`);
+        existingSocket.disconnect(true);
+      }
+    }
+    
     userSockets.set(userId, socket.id);
 
     socket.on('message', async (payload) => {
-      const { from, fromName, to, text } = payload;
+      const { from, fromName, to, text, clientMessageId } = payload;
+      
       if (!from || !text?.trim()) {
         console.warn('Invalid message payload:', payload);
+        socket.emit('error', { type: 'INVALID_PAYLOAD', message: 'Message requires sender and text' });
         return;
       }
+
+      if (to !== 'bot' && from === to) {
+        console.warn('Self-chat attempted:', { from, to });
+        socket.emit('error', { type: 'SELF_CHAT_PREVENTED', message: 'Cannot send message to yourself' });
+        return;
+      }
+
+      const dedupKey = clientMessageId || `${from}-${to}-${text.trim()}-${Math.floor(Date.now() / 1000)}`;
+      if (processedMessages.has(dedupKey)) {
+        console.warn('Duplicate message detected:', dedupKey);
+        return;
+      }
+      processedMessages.set(dedupKey, Date.now());
 
       try {
         if (to === 'bot') {
@@ -33,6 +71,7 @@ const setupChatSocket = (io) => {
 
           socket.emit('message', {
             _id: userMessageDoc._id,
+            clientMessageId,
             from,
             to: from,
             text: userMessageDoc.text,
@@ -63,7 +102,6 @@ const setupChatSocket = (io) => {
           return;
         }
 
-        // One-to-one chat message
         const messageDoc = new Message({
           from,
           to,
@@ -71,7 +109,6 @@ const setupChatSocket = (io) => {
         });
         await messageDoc.save();
 
-        // Send to recipient (if online)
         const recipientSocketId = userSockets.get(to);
         if (recipientSocketId) {
           io.of('/employee').to(recipientSocketId).emit('message', {
@@ -86,9 +123,9 @@ const setupChatSocket = (io) => {
           });
         }
 
-        // Send confirmation back to sender
         socket.emit('message', {
           _id: messageDoc._id,
+          clientMessageId,
           from,
           fromName: fromName || socket.user.fullName,
           to,
@@ -100,13 +137,16 @@ const setupChatSocket = (io) => {
 
       } catch (err) {
         console.error('Socket message error:', err);
-        socket.emit('error', 'Failed to send message');
+        processedMessages.delete(dedupKey);
+        socket.emit('error', { type: 'MESSAGE_FAILED', message: 'Failed to send message' });
       }
     });
 
     socket.on('disconnect', () => {
       console.log(`Employee disconnected: ${socket.user.fullName} (${socket.id})`);
-      userSockets.delete(userId);
+      if (userSockets.get(userId) === socket.id) {
+        userSockets.delete(userId);
+      }
     });
   });
 

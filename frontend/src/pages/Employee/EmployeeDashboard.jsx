@@ -261,36 +261,14 @@ const EmployeeDashboard = () => {
     });
   };
 
-  // ✅ FIXED: Connect to /employee namespace
   useEffect(() => {
     if ((showChatModal || showBotModal) && employeeData && !socketRef.current) {
-      const fetchPeers = async () => {
-        if (showChatModal) {
-          try {
-            const res = await employeeAPI.getEmployees();
-            if (res.data.success) {
-              const others = res.data.data.employees.filter(emp => {
-                const empId = emp._id || emp.user?._id;
-                const currentId = employeeData._id || employeeData.id;
-                return String(empId) !== String(currentId);
-              });
-              setPeers(others);
-              if (others.length > 0 && !selectedPeer) {
-                setSelectedPeer(others[0]);
-              }
-            }
-          } catch (err) {
-            console.error('Failed to load peers:', err);
-            toast.error('Could not load employee list for chat');
-          }
-        }
-      };
-      fetchPeers();
-
-      // Connect via relative path - Vite will proxy this
       const socket = io('/employee', {
         auth: { token: localStorage.getItem('token') },
-        transports: ['websocket', 'polling']
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000
       });
 
       socket.on('connect', () => {
@@ -301,10 +279,13 @@ const EmployeeDashboard = () => {
         console.error('Socket connection error:', error);
       });
 
+      socket.on('reconnect', (attemptNumber) => {
+        console.log('Socket reconnected after', attemptNumber, 'attempts');
+      });
+
       const handleMessage = (msg) => {
         console.log('Received message:', msg);
 
-        // Handle bot messages
         if (msg.fromBot) {
           setBotMessages(prev => {
             if (prev.some(m => m._id === msg._id)) return prev;
@@ -318,32 +299,77 @@ const EmployeeDashboard = () => {
           return;
         }
 
-        // Handle regular chat messages (both sent and received)
         setChatMessages(prev => {
-          // Avoid duplicates
+          if (msg.clientMessageId) {
+            const tempIndex = prev.findIndex(m => m.clientMessageId === msg.clientMessageId);
+            if (tempIndex !== -1) {
+              const updated = [...prev];
+              updated[tempIndex] = { ...msg, self: msg.self };
+              return updated;
+            }
+          }
           if (prev.some(m => m._id === msg._id)) return prev;
           return [...prev, msg];
         });
       };
 
-      socket.on('message', handleMessage);
-      socket.on('error', (error) => {
+      const handleError = (error) => {
         console.error('Socket error:', error);
-        toast.error(error || 'Chat error occurred');
-      });
+        if (error?.type === 'SELF_CHAT_PREVENTED') {
+          toast.error('You cannot send messages to yourself');
+        } else if (error?.message) {
+          toast.error(error.message);
+        } else {
+          toast.error('Chat error occurred');
+        }
+      };
+
+      socket.on('message', handleMessage);
+      socket.on('error', handleError);
 
       socketRef.current = socket;
 
       return () => {
         socket.off('message', handleMessage);
-        socket.off('error');
+        socket.off('error', handleError);
         socket.off('connect');
         socket.off('connect_error');
+        socket.off('reconnect');
         socket.disconnect();
         socketRef.current = null;
       };
     }
-  }, [showChatModal, showBotModal, employeeData, selectedPeer]);
+
+    if (!showChatModal && !showBotModal && socketRef.current) {
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
+  }, [showChatModal, showBotModal, employeeData]);
+
+  useEffect(() => {
+    if (showChatModal && employeeData) {
+      const fetchPeers = async () => {
+        try {
+          const res = await employeeAPI.getEmployees();
+          if (res.data.success) {
+            const others = res.data.data.employees.filter(emp => {
+              const empId = emp._id || emp.user?._id;
+              const currentId = employeeData._id || employeeData.id;
+              return String(empId) !== String(currentId);
+            });
+            setPeers(others);
+            if (others.length > 0 && !selectedPeer) {
+              setSelectedPeer(others[0]);
+            }
+          }
+        } catch (err) {
+          console.error('Failed to load peers:', err);
+          toast.error('Could not load employee list for chat');
+        }
+      };
+      fetchPeers();
+    }
+  }, [showChatModal, employeeData]);
 
   useEffect(() => {
     if (selectedPeer && employeeData) {
@@ -401,7 +427,6 @@ const EmployeeDashboard = () => {
       return;
     }
 
-    // selectedPeer is an employee object with _id directly, not nested under user
     const peerId = selectedPeer._id || selectedPeer.user?._id;
     const currentUserId = employeeData.id || employeeData._id;
 
@@ -411,17 +436,23 @@ const EmployeeDashboard = () => {
       return;
     }
 
+    if (String(peerId) === String(currentUserId)) {
+      toast.error('You cannot send messages to yourself');
+      return;
+    }
+
+    const clientMessageId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const message = {
       from: currentUserId,
       fromName: `${employeeData.personalInfo.firstName} ${employeeData.personalInfo.lastName}`,
       to: peerId,
       text: newMessage.trim(),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      clientMessageId
     };
 
-    const tempId = 'temp-' + Date.now();
-    setChatMessages(prev => [...prev, { ...message, _id: tempId, self: true }]);
-    setNewMessage(''); // Clear input immediately for better UX
+    setChatMessages(prev => [...prev, { ...message, _id: clientMessageId, self: true, pending: true }]);
+    setNewMessage('');
 
     try {
       if (socketRef.current && socketRef.current.connected) {
@@ -431,17 +462,16 @@ const EmployeeDashboard = () => {
         console.log('Socket not connected, using HTTP fallback');
         const response = await employeeAPI.post('/messages', { to: peerId, text: message.text });
         if (response.data.success) {
-          // Replace temp message with real one
           setChatMessages(prev => prev.map(m =>
-            m._id === tempId ? { ...response.data.data, self: true } : m
+            m.clientMessageId === clientMessageId ? { ...response.data.data, self: true } : m
           ));
         }
       }
     } catch (err) {
       console.error('Failed to send message:', err);
-      setChatMessages(prev => prev.filter(m => m._id !== tempId));
+      setChatMessages(prev => prev.filter(m => m.clientMessageId !== clientMessageId));
       toast.error('Failed to send message');
-      setNewMessage(message.text); // Restore message on error
+      setNewMessage(message.text);
     }
   };
 
