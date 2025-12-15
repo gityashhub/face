@@ -670,3 +670,55 @@ export const updateEmployeeWithFace = async (req, res) => {
     });
   }
 };
+
+export const getEmployeeBankingDetails = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Admin only.'
+      });
+    }
+
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid employee ID format'
+      });
+    }
+
+    const employee = await Employee.findById(id)
+      .select('employeeId personalInfo.firstName personalInfo.lastName bankInfo salaryInfo contactInfo.personalEmail workInfo.position workInfo.department')
+      .populate('user', 'name email')
+      .populate('workInfo.department', 'name');
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: 'Employee not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        employeeId: employee.employeeId,
+        name: `${employee.personalInfo.firstName} ${employee.personalInfo.lastName}`,
+        email: employee.user?.email || employee.contactInfo?.personalEmail,
+        position: employee.workInfo?.position,
+        department: employee.workInfo?.department?.name,
+        bankInfo: employee.bankInfo,
+        salaryInfo: employee.salaryInfo
+      }
+    });
+
+  } catch (error) {
+    console.error('Get employee banking details error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};

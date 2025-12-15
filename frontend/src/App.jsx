@@ -22,6 +22,7 @@ import ProblemStatementPage from './pages/Employee/ProblemStatementPage';
 import SalesPage from './pages/Employee/Sales';
 import AdminSalesDashboard from './pages/Admin/AdminSalesDashboard';
 import PurchaseOrders from './pages/Admin/PurchaseOrders';
+import AdminPayslips from './pages/Admin/AdminPayslips';
 import AdminProfile from './pages/Admin/AdminProfile';
 import AdminSettings from './pages/Admin/AdminSettings';
 import EmployeeProfile from './pages/Employee/EmployeeProfile';
@@ -86,6 +87,11 @@ function App() {
           <Route path="/admin/purchase-orders" element={
             <ProtectedRoute role="admin">
               <PurchaseOrders />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/payslips" element={
+            <ProtectedRoute role="admin">
+              <AdminPayslips />
             </ProtectedRoute>
           } />
           <Route path="/admin/profile" element={

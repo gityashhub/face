@@ -8,7 +8,8 @@ import {
   getEmployeesByDepartment,
   updateEmployee,
   deleteEmployee,
-  getEmployeeStats
+  getEmployeeStats,
+  getEmployeeBankingDetails
 
 } from '../controllers/employeeController.js';
 import {
@@ -60,6 +61,7 @@ router.use(protect);
 router.post('/', adminOnly, employeeValidation, createEmployee);
 router.get('/', getEmployees);
 router.get('/stats', adminOnly, getEmployeeStats);
+router.get('/:id/banking', adminOnly, getEmployeeBankingDetails);
 router.get('/me', getEmployeeById); // Special route for current user
 router.get('/department/:department', getEmployeesByDepartment);
 router.get('/:id', getEmployeeById); // Match any ID, but validate in controller

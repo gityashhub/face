@@ -550,5 +550,22 @@ export const purchaseAPI = {
   deletePurchaseOrder: (id) => API.delete(`/purchase/${id}`)
 };
 
+// Payslip API calls
+export const payslipAPI = {
+  getPayslips: (params = {}) => API.get('/payslips', { params }),
+  getPayslipById: (id) => API.get(`/payslips/${id}`),
+  getEmployeePayslips: (employeeId) => API.get(`/payslips/employee/${employeeId}`),
+  generatePayslip: (data) => API.post('/payslips/generate', data),
+  bulkGenerate: (data) => API.post('/payslips/bulk-generate', data),
+  downloadPayslip: (id) => API.get(`/payslips/${id}/download`, { responseType: 'blob' }),
+  updatePayslipStatus: (id, data) => API.patch(`/payslips/${id}/status`, data),
+  deletePayslip: (id) => API.delete(`/payslips/${id}`)
+};
+
+// Banking Details API (Admin only)
+export const bankingAPI = {
+  getEmployeeBankingDetails: (employeeId) => API.get(`/employees/${employeeId}/banking`)
+};
+
 // Export the configured axios instance
 export default API;

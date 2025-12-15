@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Building2, LayoutDashboard, Users, Calendar, Clock,FileText, Settings, X, DollarSign } from "lucide-react";
+import { Building2, LayoutDashboard, Users, Calendar, Clock, FileText, Settings, X, DollarSign, CreditCard } from "lucide-react";
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
   const location = useLocation();
@@ -16,6 +16,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
         { name: "Task Management", icon: Calendar, path: "/admin/tasks" },
         { name: "Sales", icon: DollarSign, path: "/admin/sales" },
         { name: "Purchase Orders", icon: FileText, path: "/admin/purchase-orders" },
+        { name: "Payslips", icon: CreditCard, path: "/admin/payslips" },
 
     // { name: "Reports", icon: FileText, path: "/admin/reports" },
     // { name: "Settings", icon: Settings, path: "/admin/settings" },
