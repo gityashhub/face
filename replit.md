@@ -36,6 +36,15 @@ A full-stack Employee Management System built with React (Vite) frontend and Nod
 - Real-time chat (Socket.IO)
 - AI chatbot integration
 - Purchase order management
+- **Payslip Management** - Admin can generate, bulk generate, view, and download employee payslips
+- **Employee Banking Details** - Admin can view employee banking information
+
+## Local Development Setup
+See `LOCAL_SETUP.md` in the root directory for complete instructions on:
+- Running the project locally
+- Setting up environment variables (including Groq API key)
+- MongoDB database configuration
+- Troubleshooting common issues
 
 ## Face Recognition System
 The system uses InsightFace for robust face recognition with enhanced anti-spoofing:
