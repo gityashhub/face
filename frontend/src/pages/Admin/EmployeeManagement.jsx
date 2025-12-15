@@ -309,6 +309,68 @@ const AddEmployeeModal = ({
                 </div>
               </div>
             </div>
+            {/* Bank Information */}
+            <div className="space-y-4">
+              <h3 className="text-base sm:text-lg font-bold text-white border-b border-secondary-600 pb-2">Bank Information</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-secondary-300 mb-1 sm:mb-2">Account Holder Name</label>
+                  <input
+                    type="text"
+                    value={newEmployee.bankInfo.accountHolderName}
+                    onChange={(e) => updateEmployee('bankInfo', e.target.value, 'accountHolderName')}
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white text-sm focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-secondary-300 mb-1 sm:mb-2">Account Number</label>
+                  <input
+                    type="text"
+                    value={newEmployee.bankInfo.accountNumber}
+                    onChange={(e) => updateEmployee('bankInfo', e.target.value, 'accountNumber')}
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white text-sm focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-secondary-300 mb-1 sm:mb-2">Bank Name</label>
+                  <input
+                    type="text"
+                    value={newEmployee.bankInfo.bankName}
+                    onChange={(e) => updateEmployee('bankInfo', e.target.value, 'bankName')}
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white text-sm focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-secondary-300 mb-1 sm:mb-2">Branch Name</label>
+                  <input
+                    type="text"
+                    value={newEmployee.bankInfo.branchName}
+                    onChange={(e) => updateEmployee('bankInfo', e.target.value, 'branchName')}
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white text-sm focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-secondary-300 mb-1 sm:mb-2">IFSC Code</label>
+                  <input
+                    type="text"
+                    value={newEmployee.bankInfo.ifscCode}
+                    onChange={(e) => updateEmployee('bankInfo', e.target.value.toUpperCase(), 'ifscCode')}
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white text-sm focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-secondary-300 mb-1 sm:mb-2">Account Type</label>
+                  <select
+                    value={newEmployee.bankInfo.accountType}
+                    onChange={(e) => updateEmployee('bankInfo', e.target.value, 'accountType')}
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white text-sm focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                  >
+                    <option value="Savings">Savings</option>
+                    <option value="Current">Current</option>
+                  </select>
+                </div>
+              </div>
+            </div>
             <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-secondary-600">
               <button
                 type="button"
