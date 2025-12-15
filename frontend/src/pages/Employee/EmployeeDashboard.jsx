@@ -846,9 +846,9 @@ const EmployeeDashboard = () => {
 
         {/* Chat Modal - rendered inline to prevent remounting */}
         {showChatModal && (
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-            <div className="fixed inset-0 bg-black/70 backdrop-blur-md" onClick={handleCloseChatModal} />
-            <div className="relative glass-morphism neon-border rounded-2xl w-full max-w-4xl h-[80vh] flex flex-col shadow-2xl">
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[99998]" onClick={handleCloseChatModal} />
+            <div className="relative z-[99999] glass-morphism neon-border rounded-2xl w-full max-w-4xl h-[80vh] flex flex-col shadow-2xl bg-gray-900">
               <div className="flex items-center justify-between p-4 border-b border-secondary-700">
                 <h2 className="text-xl font-bold text-white flex items-center">
                   <MessageCircle className="w-5 h-5 mr-2 text-neon-pink" />
@@ -866,7 +866,7 @@ const EmployeeDashboard = () => {
                   ) : (
                     peers.map(peer => {
                       const isOnline = onlineUsers.has(peer._id);
-                      const peerName = peer.name || peer.fullName || `${peer.personalInfo?.firstName || ''} ${peer.personalInfo?.lastName || ''}`.trim() || 'Unknown';
+                      const peerName = peer.name || 'Unknown';
                       return (
                         <div
                           key={peer._id}
@@ -895,7 +895,7 @@ const EmployeeDashboard = () => {
                     <>
                       <div className="p-3 border-b border-secondary-700 bg-secondary-800/30">
                         <div className="flex items-center gap-2">
-                          <div className="font-bold text-white">{selectedPeer.name || selectedPeer.fullName || `${selectedPeer.personalInfo?.firstName || ''} ${selectedPeer.personalInfo?.lastName || ''}`}</div>
+                          <div className="font-bold text-white">{selectedPeer.name || 'Unknown User'}</div>
                           <div className={`w-2 h-2 rounded-full ${onlineUsers.has(selectedPeer._id) ? 'bg-green-500' : 'bg-gray-500'}`} />
                         </div>
                         <div className="text-sm text-secondary-400 flex items-center gap-2">
@@ -932,7 +932,7 @@ const EmployeeDashboard = () => {
                                   <div className="flex flex-col items-center justify-center h-full text-secondary-500">
                                     <MessageCircle className="w-16 h-16 mb-3 opacity-30" />
                                     <p className="text-sm">No messages yet</p>
-                                    <p className="text-xs mt-1">Start a conversation with {selectedPeer.fullName || `${selectedPeer.personalInfo?.firstName} ${selectedPeer.personalInfo?.lastName}`}</p>
+                                    <p className="text-xs mt-1">Start a conversation with {selectedPeer.name || 'this colleague'}</p>
                                   </div>
                                 );
                               }
@@ -941,7 +941,7 @@ const EmployeeDashboard = () => {
                                   <div className={`max-w-xs md:max-w-md p-3 rounded-lg ${msg.self ? 'bg-gradient-to-r from-neon-pink to-neon-purple text-white' : 'bg-secondary-800 text-white'}`}>
                                     {!msg.self && (
                                       <div className="text-xs text-secondary-400 mb-1 font-medium">
-                                        {msg.fromName || selectedPeer.fullName || `${selectedPeer.personalInfo?.firstName} ${selectedPeer.personalInfo?.lastName}`}
+                                        {msg.fromName || selectedPeer.name || 'Unknown'}
                                       </div>
                                     )}
                                     <div className="text-sm break-words">{msg.text}</div>
