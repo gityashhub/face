@@ -14,13 +14,13 @@ const faceDataSchema = new mongoose.Schema({
     required: true
   },
   faceDescriptor: {
-    type: [Number], // 512-dimensional face descriptor array (InsightFace)
+    type: [Number], // 128-dimensional face descriptor array (face-api.js)
     required: true,
     validate: {
       validator: function(arr) {
-        return arr.length === 512;
+        return arr.length === 128; // face-api.js uses 128 dimensions
       },
-      message: 'Face descriptor must be exactly 512 dimensions (InsightFace)'
+      message: 'Face descriptor must be exactly 128 dimensions (face-api.js)'
     }
   },
   landmarks: [{

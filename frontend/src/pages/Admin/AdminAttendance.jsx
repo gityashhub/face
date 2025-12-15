@@ -607,8 +607,12 @@ const AdminAttendance = () => {
 
         {/* View Record Modal */}
         {viewingRecord && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
-          <div className="glass-morphism neon-border rounded-xl sm:rounded-2xl p-2 sm:p-3 w-full max-w-full max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4">
+            {/* Enhanced backdrop with blur */}
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-md" onClick={() => setViewingRecord(null)} />
+
+            {/* Modal content */}
+            <div className="relative glass-morphism neon-border rounded-xl sm:rounded-2xl p-2 sm:p-3 w-full max-w-full max-h-[90vh] overflow-y-auto sm:max-w-2xl shadow-2xl">
               <h3 className="text-base sm:text-lg font-bold text-white mb-3">Attendance Details</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">

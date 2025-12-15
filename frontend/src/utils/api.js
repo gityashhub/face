@@ -7,7 +7,8 @@ const API = axios.create({
   baseURL: '/api',
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  timeout: 30000 // 30 second timeout for all requests
 });
 
 // Get token from storage (check both localStorage and sessionStorage)
@@ -123,7 +124,11 @@ export const employeeAPI = {
   updateEmployee: (id, employeeData) => API.put(`/employees/${id}`, employeeData),
   deleteEmployee: (id) => API.delete(`/employees/${id}`),
   getEmployeeStats: () => API.get('/employees/stats'),
-  getEmployeesByDepartment: (department) => API.get(`/employees/department/${department}`)
+  getEmployeesByDepartment: (department) => API.get(`/employees/department/${department}`),
+
+  // Message/Chat endpoints
+  get: (endpoint) => API.get(endpoint),
+  post: (endpoint, data) => API.post(endpoint, data)
 };
 
 // Department API calls

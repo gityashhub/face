@@ -327,8 +327,16 @@ const handleAddTask = async (e) => {
   }
 
   const TaskModal = ({ isEdit = false, isView = false }) => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-0 sm:p-2 md:p-4">
-      <div className="glass-morphism neon-border rounded-2xl p-1 sm:p-3 md:p-4 lg:p-6 w-full sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-2xl max-h-[85vh] overflow-auto">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-0 sm:p-2 md:p-4">
+      {/* Enhanced backdrop with blur */}
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-md" onClick={() => {
+        if (isView) setShowViewModal(false);
+        else if (isEdit) setShowEditModal(false);
+        else setShowAddModal(false);
+      }} />
+
+      {/* Modal content */}
+      <div className="relative glass-morphism neon-border rounded-2xl p-1 sm:p-3 md:p-4 lg:p-6 w-full sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-2xl max-h-[85vh] overflow-auto shadow-2xl">
         <div className="flex items-center justify-between mb-4 sm:mb-6">
           <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white">
             {isView ? 'Task Details' : isEdit ? 'Edit Task' : 'Create New Task'}

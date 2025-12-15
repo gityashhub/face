@@ -16,7 +16,7 @@ const setupChatSocket = (io) => {
     userSockets.set(userId, socket.id);
 
     socket.on('message', async (payload) => {
-      const { from, to, text } = payload;
+      const { from, fromName, to, text } = payload;
       if (!from || !text?.trim()) {
         console.warn('Invalid message payload:', payload);
         return;
@@ -63,6 +63,7 @@ const setupChatSocket = (io) => {
           return;
         }
 
+        // One-to-one chat message
         const messageDoc = new Message({
           from,
           to,
@@ -70,11 +71,13 @@ const setupChatSocket = (io) => {
         });
         await messageDoc.save();
 
+        // Send to recipient (if online)
         const recipientSocketId = userSockets.get(to);
         if (recipientSocketId) {
           io.of('/employee').to(recipientSocketId).emit('message', {
             _id: messageDoc._id,
             from,
+            fromName: fromName || socket.user.fullName,
             to,
             text: messageDoc.text,
             timestamp: messageDoc.timestamp,
@@ -83,9 +86,11 @@ const setupChatSocket = (io) => {
           });
         }
 
+        // Send confirmation back to sender
         socket.emit('message', {
           _id: messageDoc._id,
           from,
+          fromName: fromName || socket.user.fullName,
           to,
           text: messageDoc.text,
           timestamp: messageDoc.timestamp,

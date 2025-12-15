@@ -1,8 +1,8 @@
 // src/pages/Employee/EmployeeDashboard.js
 import React, { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import EmployeeLayout from '../../components/Employee/EmployeeLayout/EmployeeLayout';
-import { 
-  User, Clock, Calendar, DollarSign, CheckCircle, AlertCircle, MapPin, Bell, Award, Target, TrendingUp, FileText, MessageCircle, X, Send, Bot
+import {
+  User, Clock, Calendar, DollarSign, CheckCircle, AlertCircle, MapPin, Bell, Award, Target, TrendingUp, FileText, MessageCircle, X, Send, Bot, Camera
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { employeeAPI, authAPI, attendanceAPI } from '../../utils/api';
@@ -269,7 +269,11 @@ const EmployeeDashboard = () => {
           try {
             const res = await employeeAPI.getEmployees();
             if (res.data.success) {
-              const others = res.data.data.employees.filter(emp => emp._id !== employeeData._id);
+              const others = res.data.data.employees.filter(emp => {
+                const empId = emp._id || emp.user?._id;
+                const currentId = employeeData._id || employeeData.id;
+                return String(empId) !== String(currentId);
+              });
               setPeers(others);
               if (others.length > 0 && !selectedPeer) {
                 setSelectedPeer(others[0]);
@@ -286,67 +290,101 @@ const EmployeeDashboard = () => {
       // Connect via relative path - Vite will proxy this
       const socket = io('/employee', {
         auth: { token: localStorage.getItem('token') },
-        transports: ['websocket']
+        transports: ['websocket', 'polling']
       });
 
-      socket.emit('join', {
-        userId: employeeData.id,
-        name: `${employeeData.personalInfo.firstName} ${employeeData.personalInfo.lastName}`
+      socket.on('connect', () => {
+        console.log('Socket connected:', socket.id);
+      });
+
+      socket.on('connect_error', (error) => {
+        console.error('Socket connection error:', error);
       });
 
       const handleMessage = (msg) => {
-        if (!msg.self && msg.to === employeeData.id) {
-          if (msg.fromBot) {
-            setBotMessages(prev => {
-              if (prev.some(m => m._id === msg._id)) return prev;
-              return [...prev, msg];
-            });
-            setLoadingBot(false);
-            if (botTimeoutRef.current) {
-              clearTimeout(botTimeoutRef.current);
-              botTimeoutRef.current = null;
-            }
-          } else {
-            setChatMessages(prev => {
-              if (prev.some(m => m._id === msg._id)) return prev;
-              return [...prev, msg];
-            });
+        console.log('Received message:', msg);
+
+        // Handle bot messages
+        if (msg.fromBot) {
+          setBotMessages(prev => {
+            if (prev.some(m => m._id === msg._id)) return prev;
+            return [...prev, msg];
+          });
+          setLoadingBot(false);
+          if (botTimeoutRef.current) {
+            clearTimeout(botTimeoutRef.current);
+            botTimeoutRef.current = null;
           }
+          return;
         }
+
+        // Handle regular chat messages (both sent and received)
+        setChatMessages(prev => {
+          // Avoid duplicates
+          if (prev.some(m => m._id === msg._id)) return prev;
+          return [...prev, msg];
+        });
       };
 
       socket.on('message', handleMessage);
+      socket.on('error', (error) => {
+        console.error('Socket error:', error);
+        toast.error(error || 'Chat error occurred');
+      });
+
       socketRef.current = socket;
 
       return () => {
         socket.off('message', handleMessage);
+        socket.off('error');
+        socket.off('connect');
+        socket.off('connect_error');
         socket.disconnect();
         socketRef.current = null;
       };
     }
-  }, [showChatModal, showBotModal, employeeData]);
+  }, [showChatModal, showBotModal, employeeData, selectedPeer]);
 
   useEffect(() => {
     if (selectedPeer && employeeData) {
       const loadChatHistory = async () => {
         setLoadingChat(true);
+        setChatMessages([]); // Clear previous messages
         try {
-          const response = await employeeAPI.get(`/messages/history/${selectedPeer.user._id}`);
+          // selectedPeer is an employee object with _id directly, not nested under user
+          const peerId = selectedPeer._id || selectedPeer.user?._id;
+          if (!peerId) {
+            console.error('No peer ID found:', selectedPeer);
+            setLoadingChat(false);
+            return;
+          }
+
+          const response = await employeeAPI.get(`/messages/history/${peerId}`);
           if (response.data.success) {
-            const normalized = response.data.data.map(msg => ({
-              _id: msg._id,
-              from: msg.from._id,
-              fromName: msg.from.fullName || `${msg.from.personalInfo?.firstName} ${msg.from.personalInfo?.lastName}`,
-              to: msg.to._id,
-              text: msg.text,
-              timestamp: msg.timestamp,
-              self: msg.from._id === employeeData.id
-            }));
+            const currentUserId = employeeData.id || employeeData._id;
+            const normalized = response.data.data.map(msg => {
+              const msgFromId = msg.from?._id || msg.from;
+              const isSelf = String(msgFromId) === String(currentUserId);
+              return {
+                _id: msg._id,
+                from: msgFromId,
+                fromName: msg.from?.fullName ||
+                         (msg.from?.personalInfo?.firstName && msg.from?.personalInfo?.lastName
+                           ? `${msg.from.personalInfo.firstName} ${msg.from.personalInfo.lastName}`
+                           : 'Unknown'),
+                to: msg.to?._id || msg.to,
+                text: msg.text,
+                timestamp: msg.timestamp,
+                self: isSelf,
+                fromBot: msg.fromBot || false
+              };
+            });
             setChatMessages(normalized);
           }
         } catch (err) {
           console.error('Failed to load chat history:', err);
           toast.error('Could not load chat history');
+          setChatMessages([]);
         } finally {
           setLoadingChat(false);
         }
@@ -358,30 +396,53 @@ const EmployeeDashboard = () => {
   }, [selectedPeer, employeeData]);
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !selectedPeer) return;
+    if (!newMessage.trim() || !selectedPeer) {
+      console.log('Cannot send message:', { newMessage, selectedPeer });
+      return;
+    }
+
+    // selectedPeer is an employee object with _id directly, not nested under user
+    const peerId = selectedPeer._id || selectedPeer.user?._id;
+    const currentUserId = employeeData.id || employeeData._id;
+
+    if (!peerId || !currentUserId) {
+      console.error('Missing IDs:', { peerId, currentUserId });
+      toast.error('Unable to send message - missing user information');
+      return;
+    }
 
     const message = {
-      from: employeeData.id,
+      from: currentUserId,
       fromName: `${employeeData.personalInfo.firstName} ${employeeData.personalInfo.lastName}`,
-      to: selectedPeer.user._id,
+      to: peerId,
       text: newMessage.trim(),
       timestamp: new Date().toISOString()
     };
 
     const tempId = 'temp-' + Date.now();
     setChatMessages(prev => [...prev, { ...message, _id: tempId, self: true }]);
+    setNewMessage(''); // Clear input immediately for better UX
 
     try {
-      if (socketRef.current) {
+      if (socketRef.current && socketRef.current.connected) {
+        console.log('Sending message via socket:', message);
         socketRef.current.emit('message', message);
       } else {
-        await employeeAPI.post('/messages', { to: selectedPeer.user._id, text: message.text });
+        console.log('Socket not connected, using HTTP fallback');
+        const response = await employeeAPI.post('/messages', { to: peerId, text: message.text });
+        if (response.data.success) {
+          // Replace temp message with real one
+          setChatMessages(prev => prev.map(m =>
+            m._id === tempId ? { ...response.data.data, self: true } : m
+          ));
+        }
       }
     } catch (err) {
+      console.error('Failed to send message:', err);
       setChatMessages(prev => prev.filter(m => m._id !== tempId));
       toast.error('Failed to send message');
+      setNewMessage(message.text); // Restore message on error
     }
-    setNewMessage('');
   };
 
   const sendBotMessage = async () => {
@@ -438,34 +499,9 @@ const EmployeeDashboard = () => {
     setNewBotMessage('');
   };
 
-  const markAttendance = async () => {
-    if (!location) {
-      toast.error('Location is required for attendance. Please enable location services.');
-      getCurrentLocation();
-      return;
-    }
-
-    try {
-      setAttendanceLoading(true);
-      const deviceInfo = geolocationUtils.getDeviceInfo();
-      // Format location with address as string (not object)
-      const formattedLocation = {
-        ...location,
-        address: typeof location.address === 'object' ? location.address.address : location.address
-      };
-      const attendanceData = { location: formattedLocation, deviceInfo, notes: 'Check-in via employee dashboard' };
-      const response = await attendanceAPI.checkIn(attendanceData);
-      if (response.data.success) {
-        toast.success('Attendance marked successfully!');
-        setTodayAttendance(response.data.data);
-        setHasCheckedIn(true);
-      }
-    } catch (error) {
-      console.error('Attendance marking error:', error);
-      toast.error(error.response?.data?.message || 'Failed to mark attendance');
-    } finally {
-      setAttendanceLoading(false);
-    }
+  const markAttendance = () => {
+    // Redirect to attendance page for face verification
+    window.location.href = '/employee/attendance';
   };
 
   const recentNotices = [
@@ -509,15 +545,37 @@ const EmployeeDashboard = () => {
   const displayDepartment = employeeData?.workInfo?.department || 'General';
   const displayEmployeeId = employeeData?.employeeId || employeeData?.user?.employeeId || 'N/A';
 
+  const handleCloseChatModal = () => {
+    setShowChatModal(false);
+    setNewMessage('');
+    // Don't clear selectedPeer and messages immediately to avoid flash
+    setTimeout(() => {
+      setSelectedPeer(null);
+      setChatMessages([]);
+    }, 300);
+  };
+
+  const handleCloseBotModal = () => {
+    setShowBotModal(false);
+    setNewBotMessage('');
+    setTimeout(() => {
+      setBotMessages([]);
+    }, 300);
+  };
+
   const ChatModal = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[1000] p-4">
-      <div className="bg-gray-900 neon-border rounded-2xl w-full max-w-4xl h-[80vh] flex flex-col">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      {/* Enhanced backdrop with blur */}
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-md" onClick={handleCloseChatModal} />
+
+      {/* Modal content */}
+      <div className="relative glass-morphism neon-border rounded-2xl w-full max-w-4xl h-[80vh] flex flex-col shadow-2xl">
         <div className="flex items-center justify-between p-4 border-b border-secondary-700">
           <h2 className="text-xl font-bold text-white flex items-center">
             <MessageCircle className="w-5 h-5 mr-2 text-neon-pink" />
             Employee Chat
           </h2>
-          <button onClick={() => setShowChatModal(false)} className="text-secondary-400 hover:text-white">
+          <button onClick={handleCloseChatModal} className="text-secondary-400 hover:text-white transition-colors">
             <X className="w-6 h-6" />
           </button>
         </div>
@@ -555,34 +613,65 @@ const EmployeeDashboard = () => {
                     </div>
                   ) : (
                     <>
-                      {chatMessages
-                        .filter(msg =>
-                          (msg.from === employeeData.id && msg.to === selectedPeer.user._id) ||
-                          (msg.to === employeeData.id && msg.from === selectedPeer.user._id)
-                        )
-                        .map((msg, idx) => (
+                      {(() => {
+                        const currentUserId = String(employeeData.id || employeeData._id);
+                        const selectedPeerId = String(selectedPeer._id || selectedPeer.user?._id);
+
+                        const filteredMessages = chatMessages.filter(msg => {
+                          // Filter to show only messages between current user and selected peer
+                          const msgFrom = String(msg.from || '');
+                          const msgTo = String(msg.to || '');
+
+                          const isConversation = (
+                            (msgFrom === currentUserId && msgTo === selectedPeerId) ||
+                            (msgFrom === selectedPeerId && msgTo === currentUserId)
+                          );
+
+                          return isConversation;
+                        });
+
+                        if (filteredMessages.length === 0) {
+                          return (
+                            <div className="flex flex-col items-center justify-center h-full text-secondary-500">
+                              <MessageCircle className="w-16 h-16 mb-3 opacity-30" />
+                              <p className="text-sm">No messages yet</p>
+                              <p className="text-xs mt-1">Start a conversation with {selectedPeer.fullName || `${selectedPeer.personalInfo?.firstName} ${selectedPeer.personalInfo?.lastName}`}</p>
+                            </div>
+                          );
+                        }
+
+                        return filteredMessages.map((msg, idx) => (
                           <div
-                            key={msg._id || idx}
-                            className={`max-w-xs md:max-w-md p-3 rounded-lg ${
-                              msg.self
-                                ? 'ml-auto bg-gradient-to-r from-neon-pink to-neon-purple text-white'
-                                : 'mr-auto bg-secondary-800 text-white'
-                            }`}
+                            key={msg._id || `msg-${idx}`}
+                            className={`flex ${msg.self ? 'justify-end' : 'justify-start'}`}
                           >
-                            <div className="text-sm">{msg.text}</div>
-                            <div className={`text-xs mt-1 ${msg.self ? 'text-pink-200' : 'text-secondary-400'}`}>
-                              {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            <div
+                              className={`max-w-xs md:max-w-md p-3 rounded-lg ${
+                                msg.self
+                                  ? 'bg-gradient-to-r from-neon-pink to-neon-purple text-white'
+                                  : 'bg-secondary-800 text-white'
+                              }`}
+                            >
+                              {!msg.self && (
+                                <div className="text-xs text-secondary-400 mb-1 font-medium">
+                                  {msg.fromName || selectedPeer.fullName || `${selectedPeer.personalInfo?.firstName} ${selectedPeer.personalInfo?.lastName}`}
+                                </div>
+                              )}
+                              <div className="text-sm break-words">{msg.text}</div>
+                              <div className={`text-xs mt-1 ${msg.self ? 'text-pink-200' : 'text-secondary-400'}`}>
+                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </div>
                             </div>
                           </div>
-                        ))}
+                        ));
+                      })()}
                       <div ref={messagesEndRef} />
                     </>
                   )}
                 </div>
                 <div className="p-3 border-t border-secondary-700">
-                  <div className="flex">
+                  <form onSubmit={(e) => { e.preventDefault(); sendMessage(); }} className="flex">
                     <input
-                      key="chat-input"
                       type="text"
                       value={newMessage}
                       onChange={handleChatMessageChange}
@@ -593,16 +682,18 @@ const EmployeeDashboard = () => {
                         }
                       }}
                       placeholder="Type a message..."
-                      className="flex-1 px-4 py-2 bg-secondary-800 border border-secondary-600 rounded-l-lg text-white focus:outline-none focus:ring-1 focus:ring-neon-pink"
+                      className="flex-1 px-4 py-2 bg-secondary-800 border border-secondary-600 rounded-l-lg text-white placeholder-secondary-500 focus:outline-none focus:ring-2 focus:ring-neon-pink focus:border-transparent"
+                      autoComplete="off"
                     />
                     <button
+                      type="submit"
                       onClick={sendMessage}
                       disabled={!newMessage.trim()}
-                      className="px-4 bg-gradient-to-r from-neon-pink to-neon-purple text-white rounded-r-lg disabled:opacity-50"
+                      className="px-4 bg-gradient-to-r from-neon-pink to-neon-purple text-white rounded-r-lg disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
                     >
                       <Send className="w-4 h-4" />
                     </button>
-                  </div>
+                  </form>
                 </div>
               </>
             ) : (
@@ -617,14 +708,18 @@ const EmployeeDashboard = () => {
   );
 
   const BotModal = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[1000] p-4">
-      <div className="bg-gray-900 neon-border rounded-2xl w-full max-w-md h-[70vh] flex flex-col">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      {/* Enhanced backdrop with blur */}
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-md" onClick={handleCloseBotModal} />
+
+      {/* Modal content */}
+      <div className="relative glass-morphism neon-border rounded-2xl w-full max-w-md h-[70vh] flex flex-col shadow-2xl">
         <div className="flex items-center justify-between p-4 border-b border-secondary-700">
           <h2 className="text-xl font-bold text-white flex items-center">
             <Bot className="w-5 h-5 mr-2 text-blue-400" />
             HR Assistant
           </h2>
-          <button onClick={() => setShowBotModal(false)} className="text-secondary-400 hover:text-white">
+          <button onClick={handleCloseBotModal} className="text-secondary-400 hover:text-white transition-colors">
             <X className="w-6 h-6" />
           </button>
         </div>
@@ -779,18 +874,15 @@ const EmployeeDashboard = () => {
             </div>
             {!hasCheckedIn && (
               <div className="flex flex-col space-y-2">
-                {!location && (
-                  <button onClick={getCurrentLocation} className="px-4 py-2 bg-secondary-700 hover:bg-secondary-600 text-white text-sm rounded-lg">
-                    Get Location
-                  </button>
-                )}
                 <button
                   onClick={markAttendance}
-                  disabled={!location || attendanceLoading}
-                  className="px-6 py-3 bg-gradient-to-r from-neon-pink to-neon-purple text-white font-semibold rounded-lg hover-glow transition-all duration-300 flex items-center disabled:opacity-50"
+                  className="px-6 py-3 bg-gradient-to-r from-neon-pink to-neon-purple text-white font-semibold rounded-lg hover-glow transition-all duration-300 flex items-center justify-center"
                 >
-                  <MapPin className="w-4 h-4 mr-2" /> {attendanceLoading ? 'Marking...' : 'Mark Attendance'}
+                  <Camera className="w-4 h-4 mr-2" /> Mark Attendance with Face Verification
                 </button>
+                <p className="text-xs text-secondary-400 text-center">
+                  Face verification required
+                </p>
               </div>
             )}
             {hasCheckedIn && !hasCheckedOut && (

@@ -31,22 +31,31 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
         {/* Logo */}
         <div className="flex items-center justify-between h-16 px-6 border-b border-secondary-700">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center">
-  <img 
- src="/src/assets/logo.jpg" 
-    alt="Logo"
-    className="w-full h-full object-cover"
-  />
-</div>
+            {/* Logo Container - Fixed aspect ratio */}
+            <div className="w-12 h-12 rounded-lg overflow-hidden flex items-center justify-center bg-gradient-to-br from-neon-pink/10 to-neon-purple/10 border border-neon-pink/20 flex-shrink-0">
+              <img
+                src="/src/assets/logo.jpg"
+                alt="Taruna Technology Logo"
+                className="w-full h-full object-contain p-1"
+              />
+            </div>
 
-            <div>
-              <h1 className="text-lg font-bold text-white">Taruna Technology</h1>
-              <p className="text-xs text-secondary-400">Admin Panel</p>
+            {/* Text Container */}
+            <div className="flex flex-col justify-center min-w-0">
+              <h1 className="text-base font-bold text-white leading-tight tracking-wide">
+                Taruna Technology
+              </h1>
+              <p className="text-xs text-secondary-400 leading-tight mt-0.5">
+                Admin Panel
+              </p>
             </div>
           </div>
+
+          {/* Close button for mobile */}
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden text-secondary-400 hover:text-white"
+            className="lg:hidden text-secondary-400 hover:text-white transition-colors flex-shrink-0"
+            aria-label="Close sidebar"
           >
             <X className="w-5 h-5" />
           </button>

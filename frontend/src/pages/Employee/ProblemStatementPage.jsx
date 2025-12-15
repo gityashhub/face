@@ -246,8 +246,12 @@ const ProblemStatementPage = () => {
 
       {/* Add Problem Modal */}
           {showAddModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-              <div className="bg-gray-900 neon-border rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+              {/* Enhanced backdrop with blur */}
+              <div className="fixed inset-0 bg-black/70 backdrop-blur-md" onClick={() => setShowAddModal(false)} />
+
+              {/* Modal content */}
+              <div className="relative glass-morphism neon-border rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-bold text-white">Report a Problem</h2>
                   <button onClick={() => setShowAddModal(false)} className="text-secondary-400 hover:text-white">

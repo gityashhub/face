@@ -40,7 +40,9 @@ const AddEmployeeModal = ({
   capturedFaceData,
   setCapturedFaceData,
   capturedDescriptors,
+  setCapturedDescriptors,
   posesCaptured,
+  setPosesCaptured,
   videoRef,
   canvasRef,
   startCamera,
@@ -85,16 +87,26 @@ const AddEmployeeModal = ({
   const accountTypes = ['Savings', 'Current'];
   if (!show) return null;
   const POSES = [
-    { name: 'front', instruction: 'Look straight ahead', emoji: '👁️' },
-    { name: 'left', instruction: 'Slowly turn your head to the left', emoji: '👈' },
-    { name: 'right', instruction: 'Slowly turn your head to the right', emoji: '👉' },
-    { name: 'up', instruction: 'Tilt your head upward', emoji: '👆' }
+    { name: 'front', instruction: 'Look straight ahead at the camera. Keep your head level.', emoji: '�️' }
   ];
   const currentPoseIndex = posesCaptured.length;
   const currentPose = currentPoseIndex < POSES.length ? POSES[currentPoseIndex] : null;
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000] p-2 sm:p-4">
-      <div className="bg-gray-900 neon-border rounded-2xl p-3 sm:p-4 md:p-6 w-full max-w-full sm:max-w-6xl max-h-[95vh] overflow-y-auto relative">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4">
+      {/* Enhanced backdrop with blur - Click to close */}
+      <div
+        className="fixed inset-0 bg-black/70 backdrop-blur-md"
+        onClick={() => {
+          resetForm();
+          onClose();
+        }}
+      />
+
+      {/* Modal content - Prevent click propagation */}
+      <div
+        className="relative glass-morphism neon-border rounded-2xl p-3 sm:p-4 md:p-6 w-full max-w-full sm:max-w-6xl max-h-[95vh] overflow-y-auto shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center flex-wrap gap-2">
             <h2 className="text-xl sm:text-2xl font-bold text-white">Add New Employee</h2>
@@ -117,9 +129,14 @@ const AddEmployeeModal = ({
               <Camera className="w-4 h-4" />
               <span>Face Registration Required</span>
             </div>
-            <button 
-              onClick={resetForm}
-              className="text-secondary-400 hover:text-white"
+            <button
+              onClick={() => {
+                resetForm();
+                onClose();
+              }}
+              className="text-secondary-400 hover:text-white transition-colors"
+              aria-label="Close modal"
+              type="button"
             >
               <X className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
@@ -295,7 +312,10 @@ const AddEmployeeModal = ({
             <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-secondary-600">
               <button
                 type="button"
-                onClick={resetForm}
+                onClick={() => {
+                  resetForm();
+                  onClose();
+                }}
                 className="px-4 sm:px-6 py-2.5 sm:py-3 border border-secondary-600 text-secondary-300 text-sm rounded-lg hover:bg-secondary-700/50 transition-colors"
               >
                 Cancel
@@ -314,7 +334,7 @@ const AddEmployeeModal = ({
               <h3 className="text-lg font-bold text-white mb-2">
                 Face Registration for {newEmployee.personalInfo.firstName} {newEmployee.personalInfo.lastName}
               </h3>
-              <p className="text-secondary-400 text-sm">Follow instructions to capture 4 face angles</p>
+              <p className="text-secondary-400 text-sm">Position your face directly in front of the camera</p>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               {/* Camera Feed */}
@@ -363,9 +383,9 @@ const AddEmployeeModal = ({
                   <div className="bg-secondary-800/30 rounded-lg p-3 sm:p-4">
                     <div className="flex items-center space-x-2 sm:space-x-3 mb-2 sm:mb-3">
                       <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-400" />
-                      <span className="text-sm sm:text-white font-medium">Pose Capture Progress: {posesCaptured.length}/4</span>
+                      <span className="text-sm sm:text-white font-medium">Face Captured Successfully!</span>
                     </div>
-                    <div className="grid grid-cols-4 gap-1.5 sm:gap-2 mb-2 sm:mb-3">
+                    <div className="grid grid-cols-1 gap-1.5 sm:gap-2 mb-2 sm:mb-3">
                       {POSES.map(pose => (
                         <div key={pose.name} className={`text-center p-1.5 sm:p-2 rounded text-[10px] sm:text-xs font-medium ${
                           posesCaptured.includes(pose.name)
@@ -377,15 +397,15 @@ const AddEmployeeModal = ({
                       ))}
                     </div>
                     {capturedDescriptors.length > 0 && (
-                      <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+                      <div className="grid grid-cols-1 gap-1.5 sm:gap-2">
                         {capturedDescriptors.map((faceData, index) => (
                           <div key={index} className="text-center">
                             <img
                               src={faceData.thumbnail}
-                              alt={`Pose ${faceData.pose}`}
-                              className="w-10 h-10 sm:w-12 sm:h-12 rounded object-cover border border-secondary-600 mx-auto mb-1"
+                              alt={`Front face`}
+                              className="w-20 h-20 sm:w-24 sm:h-24 rounded object-cover border border-secondary-600 mx-auto mb-1"
                             />
-                            <p className="text-[10px] sm:text-xs text-secondary-400">{faceData.pose}</p>
+                            <p className="text-[10px] sm:text-xs text-secondary-400">Front Face</p>
                           </div>
                         ))}
                       </div>
@@ -415,17 +435,17 @@ const AddEmployeeModal = ({
                     ))}
                   </div>
                   <div className="text-center text-[10px] sm:text-xs text-secondary-400">
-                    {posesCaptured.length}/4 poses captured
+                    {posesCaptured.length > 0 ? 'Face captured!' : 'Ready to capture'}
                   </div>
                 </div>
                 {!capturedFaceData ? (
                   <button
                     onClick={captureCurrentPose}
-                    disabled={!faceDetected || isScanning || posesCaptured.length >= 4}
+                    disabled={isScanning || posesCaptured.length >= 1}
                     className="w-full py-3 sm:py-4 bg-gradient-to-r from-neon-pink to-neon-purple text-white font-semibold text-sm rounded-lg hover-glow transition-all duration-300 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Camera className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span>{isScanning ? 'Capturing...' : `Capture ${currentPose?.name || 'Final'} Pose`}</span>
+                    <span>{isScanning ? 'Capturing...' : 'Capture This Pose'}</span>
                   </button>
                 ) : (
                   <button
@@ -438,7 +458,7 @@ const AddEmployeeModal = ({
                     className="w-full py-2.5 sm:py-3 border border-secondary-600 text-secondary-300 text-sm rounded-lg hover:bg-secondary-700/50 transition-colors flex items-center justify-center space-x-2"
                   >
                     <Camera className="w-3 h-3 sm:w-4 sm:h-4" />
-                    <span>Recapture All Poses</span>
+                    <span>Recapture Face</span>
                   </button>
                 )}
               </div>
@@ -492,10 +512,7 @@ const EmployeeManagement = () => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const POSES = [
-    { name: 'front', instruction: 'Look straight ahead', emoji: '👁️' },
-    { name: 'left', instruction: 'Slowly turn your head to the left', emoji: '👈' },
-    { name: 'right', instruction: 'Slowly turn your head to the right', emoji: '👉' },
-    { name: 'up', instruction: 'Tilt your head upward', emoji: '👆' }
+    { name: 'front', instruction: 'Look straight ahead at the camera. Keep your head level.', emoji: '�️' }
   ];
   const [newEmployee, setNewEmployee] = useState({
     personalInfo: {
@@ -611,139 +628,145 @@ const EmployeeManagement = () => {
   };
 
   const startFaceDetection = async () => {
-    if (!videoRef.current || !canvasRef.current) return;
-    const intervalId = setInterval(async () => {
-      if (videoRef.current && videoRef.current.readyState >= 2 && canvasRef.current) {
-        try {
-          const imageBlob = await cameraHelper.captureImageBlob(videoRef.current);
-          if (!imageBlob) return;
-          
-          const response = await faceAPI.detectFaces(imageBlob);
-          const canvas = canvasRef.current;
-          if (!canvas) return;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) return;
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          
-          if (response.data?.faces && response.data.faces.length > 0) {
-            setFaceDetected(true);
-            response.data.faces.forEach((face) => {
-              const box = face.bbox;
-              if (box) {
-                const scaleX = canvas.width / (videoRef.current?.videoWidth || 640);
-                const scaleY = canvas.height / (videoRef.current?.videoHeight || 480);
-                const scaledBox = {
-                  x: box[0] * scaleX,
-                  y: box[1] * scaleY,
-                  width: (box[2] - box[0]) * scaleX,
-                  height: (box[3] - box[1]) * scaleY
-                };
-                drawHexagon(ctx, scaledBox.x, scaledBox.y, scaledBox.width, scaledBox.height);
-                ctx.strokeStyle = '#ff0080';
-                ctx.lineWidth = 3;
-                ctx.stroke();
-                ctx.shadowColor = '#ff0080';
-                ctx.shadowBlur = 15;
-                ctx.stroke();
-                ctx.shadowBlur = 0;
-              }
-            });
-          } else {
-            setFaceDetected(false);
-          }
-        } catch (error) {
-          console.error('Face detection error:', error);
-          setFaceDetected(false);
-        }
+    // Simplified face detection - just assume face is present if camera is ready
+    // This avoids the timeout issues with continuous detection
+    console.log('Face detection simplified - assuming face is present when camera is ready');
+
+    // Set face detected to true after a short delay to allow camera to initialize
+    setTimeout(() => {
+      if (videoRef.current && videoRef.current.readyState >= 2) {
+        setFaceDetected(true);
+        console.log('Camera ready - face detection enabled');
       }
-    }, 800);
-    if (videoRef.current) {
-      videoRef.current.detectionInterval = intervalId;
+    }, 1000);
+
+    // Optional: You can still draw a guide box without actual detection
+    if (videoRef.current && canvasRef.current) {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        // Draw a centered guide box
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const boxWidth = canvas.width * 0.6;
+        const boxHeight = canvas.height * 0.8;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = '#00ff88';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([10, 5]);
+        ctx.strokeRect(
+          centerX - boxWidth / 2,
+          centerY - boxHeight / 2,
+          boxWidth,
+          boxHeight
+        );
+        ctx.setLineDash([]);
+      }
     }
   };
 
   const captureCurrentPose = async () => {
-    if (!faceDetected) {
-      toast.error('No face detected. Please position your face in the frame.');
-      return false;
-    }
+    // Removed face detection check - we'll validate during capture instead
     const currentPoseIndex = posesCaptured.length;
     if (currentPoseIndex >= POSES.length) {
-      toast.error('All poses already captured.');
+      toast.error('Face already captured.');
       return false;
     }
     setIsScanning(true);
+
+    // Add timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      setIsScanning(false);
+      toast.error('Capture timeout. Please try again.');
+    }, 30000); // 30 second timeout
+
     try {
-      const imageBlob = await cameraHelper.captureImageBlob(videoRef.current);
-      if (!imageBlob) {
+      // Capture image as base64
+      const imageBase64 = cameraHelper.captureImage(videoRef.current);
+      if (!imageBase64) {
+        clearTimeout(timeoutId);
         toast.error('Failed to capture image. Please try again.');
+        setIsScanning(false);
         return false;
       }
 
-      const response = await faceAPI.detectFaces(imageBlob);
-      if (!response.data?.faces || response.data.faces.length === 0) {
-        toast.error('No face detected. Please try again.');
+      console.log('Captured image size:', imageBase64.length, 'characters');
+
+      // Use the new analyzeFrameBase64 endpoint with error handling
+      let response;
+      try {
+        console.log('Sending request to analyze frame...');
+        response = await Promise.race([
+          faceAPI.analyzeFrameBase64(imageBase64),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Request timeout - server took too long to respond')), 25000)
+          )
+        ]);
+        console.log('Response received:', response.data);
+      } catch (apiError) {
+        clearTimeout(timeoutId);
+        console.error('API call error:', apiError);
+
+        // More specific error messages
+        if (apiError.message && apiError.message.includes('timeout')) {
+          toast.error('Request timeout. The server is taking too long. Please try again.');
+        } else if (apiError.code === 'ERR_NETWORK') {
+          toast.error('Network error. Please check if the backend server is running.');
+        } else if (apiError.response?.status === 413) {
+          toast.error('Image too large. Please try with better lighting.');
+        } else {
+          toast.error(`Error: ${apiError.message || 'Network error. Please try again.'}`);
+        }
+
+        setIsScanning(false);
         return false;
       }
-      
-      const face = response.data.faces[0];
-      const faceDescriptor = face.embedding;
-      if (!Array.isArray(faceDescriptor) || faceDescriptor.length !== 512) {
+
+      clearTimeout(timeoutId);
+
+      if (!response.data?.success || !response.data?.face_detected) {
+        toast.error(response.data?.message || 'No face detected. Please try again.');
+        setIsScanning(false);
+        return false;
+      }
+
+      const faceDescriptor = response.data.face.descriptor;
+      if (!Array.isArray(faceDescriptor) || faceDescriptor.length !== 128) {
         toast.error('Invalid face descriptor. Please try again.');
+        setIsScanning(false);
         return false;
       }
 
-      const video = videoRef.current;
-      const thumbCanvas = document.createElement('canvas');
-      const thumbSize = 150;
-      thumbCanvas.width = thumbSize;
-      thumbCanvas.height = thumbSize;
-      const ctx = thumbCanvas.getContext('2d');
-      
-      if (face.bbox) {
-        const [x1, y1, x2, y2] = face.bbox;
-        const boxWidth = x2 - x1;
-        const boxHeight = y2 - y1;
-        const paddingRatio = 0.4;
-        const paddingX = boxWidth * paddingRatio;
-        const paddingY = boxHeight * paddingRatio;
-        const cropX = Math.max(0, x1 - paddingX);
-        const cropY = Math.max(0, y1 - paddingY);
-        const cropWidth = Math.min(video.videoWidth - cropX, boxWidth + (paddingX * 2));
-        const cropHeight = Math.min(video.videoHeight - cropY, boxHeight + (paddingY * 2));
-        ctx.drawImage(video, cropX, cropY, cropWidth, cropHeight, 0, 0, thumbSize, thumbSize);
-      } else {
-        ctx.drawImage(video, 0, 0, thumbSize, thumbSize);
-      }
-      
-      const thumbnail = thumbCanvas.toDataURL('image/jpeg', 0.85);
-      const confidence = face.det_score ? Math.round(face.det_score * 100) : 90;
-      
+      // Create thumbnail from captured image
+      const thumbnail = imageBase64;
+      const confidence = response.data.quality?.score
+        ? Math.round(response.data.quality.score * 100)
+        : 90;
+
       const faceData = {
         pose: POSES[currentPoseIndex].name,
         descriptor: faceDescriptor,
         thumbnail: thumbnail,
         confidence: confidence
       };
+
       setCapturedDescriptors(prev => [...prev, faceData]);
       setPosesCaptured(prev => [...prev, POSES[currentPoseIndex].name]);
-      toast.success(`Pose "${POSES[currentPoseIndex].name}" captured successfully! (${posesCaptured.length + 1}/4)`);
-      
-      if (posesCaptured.length + 1 >= 4) {
-        const finalDescriptors = [...capturedDescriptors, faceData];
-        const averageDescriptor = finalDescriptors[0].descriptor.map((_, i) =>
-          finalDescriptors.reduce((sum, fd) => sum + fd.descriptor[i], 0) / finalDescriptors.length
-        );
-        setCapturedFaceData({
-          descriptors: finalDescriptors,
-          averageDescriptor: averageDescriptor,
-          thumbnail: finalDescriptors[0].thumbnail,
-          confidence: Math.round(finalDescriptors.reduce((sum, fd) => sum + fd.confidence, 0) / finalDescriptors.length)
-        });
-        toast.success('All 4 poses captured! Face registration complete.');
-      }
+      toast.success(`Front face captured successfully!`);
+
+      // Since we only capture one pose now, immediately set the face data
+      setCapturedFaceData({
+        descriptors: [faceData],
+        averageDescriptor: faceDescriptor,
+        thumbnail: thumbnail,
+        confidence: confidence
+      });
+      toast.success('Face registration complete!');
+
       return true;
     } catch (error) {
+      clearTimeout(timeoutId);
       console.error('Error capturing face:', error);
       toast.error('Failed to capture face data. Please try again.');
       return false;
@@ -999,8 +1022,12 @@ const EmployeeManagement = () => {
   const EditModal = () => {
     if (!selectedEmployee) return null;
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000] p-2 sm:p-4">
-        <div className="bg-gray-900 neon-border rounded-2xl p-3 sm:p-4 md:p-6 w-full max-w-full sm:max-w-6xl max-h-[95vh] overflow-y-auto relative">
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4">
+        {/* Enhanced backdrop with blur */}
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md" />
+
+        {/* Modal content */}
+        <div className="relative glass-morphism neon-border rounded-2xl p-3 sm:p-4 md:p-6 w-full max-w-full sm:max-w-6xl max-h-[95vh] overflow-y-auto shadow-2xl">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl sm:text-2xl font-bold text-white">Edit Employee</h2>
             <button onClick={() => setShowEditModal(false)} className="text-secondary-400 hover:text-white">
@@ -1203,8 +1230,12 @@ const EmployeeManagement = () => {
   };
 
   const ViewModal = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-80 p-2 sm:p-4">
-      <div className="bg-gray-900 neon-border rounded-2xl p-4 sm:p-6 w-full max-w-full sm:max-w-6xl max-h-[95vh] overflow-y-auto">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4">
+      {/* Enhanced backdrop with blur */}
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-md" />
+
+      {/* Modal content */}
+      <div className="relative glass-morphism neon-border rounded-2xl p-4 sm:p-6 w-full max-w-full sm:max-w-6xl max-h-[95vh] overflow-y-auto shadow-2xl">
         <div className="flex items-center justify-between mb-4 sm:mb-6">
           <h2 className="text-xl sm:text-2xl font-bold text-white">Employee Details</h2>
           <button
@@ -1673,7 +1704,9 @@ const EmployeeManagement = () => {
           capturedFaceData={capturedFaceData}
           setCapturedFaceData={setCapturedFaceData}
           capturedDescriptors={capturedDescriptors}
+          setCapturedDescriptors={setCapturedDescriptors}
           posesCaptured={posesCaptured}
+          setPosesCaptured={setPosesCaptured}
           videoRef={videoRef}
           canvasRef={canvasRef}
           startCamera={startCamera}

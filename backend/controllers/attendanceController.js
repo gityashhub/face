@@ -11,6 +11,12 @@ export const OFFICE_LOCATION = {
   radius: 999999 // meters - TEMPORARILY INCREASED FOR TESTING (was 1500)
 }
 
+// Shared face similarity threshold (cosine similarity).
+// This is aligned with the Python face_service default and can be overridden
+// via the FACE_SIMILARITY_THRESHOLD environment variable to keep behavior
+// consistent across services.
+const FACE_SIMILARITY_THRESHOLD = parseFloat(process.env.FACE_SIMILARITY_THRESHOLD || '0.6');
+
 
 function calculateDistance(lat1, lon1, lat2, lon2) {
   const R = 6371e3; // meters
@@ -38,13 +44,22 @@ const getTodayDateRange = () => {
   return { startOfDay, endOfDay };
 };
 
-// @desc    Mark attendance (Check In)
+// @desc    Mark attendance (Check In) - REQUIRES FACE VERIFICATION
 // @route   POST /api/attendance/checkin
 // @access  Private (Employee)
 export const checkIn = async (req, res) => {
   try {
-    const { location, deviceInfo, notes } = req.body;
-    console.log('Check-in request:', { userId: req.user.id, location });
+    const { location, deviceInfo, notes, faceVerified } = req.body;
+    console.log('Check-in request:', { userId: req.user.id, location, faceVerified });
+
+    // ⚠️ SECURITY: Require face verification for attendance
+    // This prevents employees from marking attendance without face verification
+    if (!faceVerified) {
+      return res.status(403).json({
+        success: false,
+        message: 'Face verification is required to mark attendance. Please use the face verification feature.'
+      });
+    }
 
     // Validate location data
     if (!location || !location.latitude || !location.longitude) {
@@ -580,15 +595,17 @@ export const checkInWithFace = async (req, res) => {
     const registeredDescriptor = employee.faceDescriptor;
     const currentDescriptor = faceDescriptor;
 
-    // Cosine similarity
-    const dotProduct = registeredDescriptor.reduce((sum, val, i) => sum + val * currentDescriptor[i], 0);
-    const mag1 = Math.sqrt(registeredDescriptor.reduce((sum, val) => sum + val * val, 0));
-    const mag2 = Math.sqrt(currentDescriptor.reduce((sum, val) => sum + val * val, 0));
-    const similarity = dotProduct / (mag1 * mag2);
+	    // Cosine similarity
+	    const dotProduct = registeredDescriptor.reduce((sum, val, i) => sum + val * currentDescriptor[i], 0);
+	    const mag1 = Math.sqrt(registeredDescriptor.reduce((sum, val) => sum + val * val, 0));
+	    const mag2 = Math.sqrt(currentDescriptor.reduce((sum, val) => sum + val * val, 0));
+	    const similarity = dotProduct / (mag1 * mag2);
 
-    // STRICT threshold for cosine similarity (higher = stricter, 0.75 for high accuracy)
-    const threshold = 0.75;
-    const faceMatch = similarity > threshold;
+	    // Shared threshold for cosine similarity (higher = stricter).
+	    // Kept in sync with the FACE_SIMILARITY_THRESHOLD used by the
+	    // Python face_service for consistent behaviour across flows.
+	    const threshold = FACE_SIMILARITY_THRESHOLD;
+	    const faceMatch = similarity > threshold;
 
     console.log('Face verification result:', {
       userId: req.user.id,
@@ -751,11 +768,11 @@ export const verifyFace = async (req, res) => {
   try {
     const { faceDescriptor } = req.body;
 
-    // Validate input
-    if (!faceDescriptor || !Array.isArray(faceDescriptor) || faceDescriptor.length !== 512) {
+    // Validate input - face-api.js uses 128 dimensions
+    if (!faceDescriptor || !Array.isArray(faceDescriptor) || faceDescriptor.length !== 128) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid face descriptor. Must be array of 512 numbers.'
+        message: `Invalid face descriptor. Must be array of 128 numbers (received ${faceDescriptor?.length || 0}).`
       });
     }
 
@@ -780,15 +797,17 @@ export const verifyFace = async (req, res) => {
     const registeredDescriptor = employee.faceDescriptor;
     const currentDescriptor = faceDescriptor;
 
-    // Cosine similarity
-    const dotProduct = registeredDescriptor.reduce((sum, val, i) => sum + val * currentDescriptor[i], 0);
-    const mag1 = Math.sqrt(registeredDescriptor.reduce((sum, val) => sum + val * val, 0));
-    const mag2 = Math.sqrt(currentDescriptor.reduce((sum, val) => sum + val * val, 0));
-    const similarity = dotProduct / (mag1 * mag2);
+	    // Cosine similarity
+	    const dotProduct = registeredDescriptor.reduce((sum, val, i) => sum + val * currentDescriptor[i], 0);
+	    const mag1 = Math.sqrt(registeredDescriptor.reduce((sum, val) => sum + val * val, 0));
+	    const mag2 = Math.sqrt(currentDescriptor.reduce((sum, val) => sum + val * val, 0));
+	    const similarity = dotProduct / (mag1 * mag2);
 
-    // STRICT threshold for cosine similarity (higher = stricter, 0.75 for high accuracy)
-    const threshold = 0.75;
-    const match = similarity > threshold;
+	    // Shared threshold for cosine similarity (higher = stricter).
+	    // Kept in sync with the FACE_SIMILARITY_THRESHOLD used by the
+	    // Python face_service for consistent behaviour across flows.
+	    const threshold = FACE_SIMILARITY_THRESHOLD;
+	    const match = similarity > threshold;
 
     console.log('Face verification result:', {
       userId: req.user.id,

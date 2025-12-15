@@ -111,24 +111,26 @@ const EmployeeAttendance = () => {
     setIsVerifying(true);
     setVerificationStatus(null);
     setVerificationProgress(0);
-    setLivenessMessage('Capturing video frames...');
+    setLivenessMessage('Capturing your photo...');
 
     try {
       setVerificationProgress(20);
-      setLivenessMessage('Please look at the camera and move slightly...');
-      
-      const frames = await localCameraHelper.current.captureMultipleFrames(videoRef.current, 5, 300);
-      
-      if (frames.length < 3) {
-        toast.error('Failed to capture enough frames. Please try again.');
+      setLivenessMessage('Please look at the camera...');
+
+      // Use single photo capture instead of video frames for faster verification
+      const imageBlob = await localCameraHelper.current.captureImageBlob(videoRef.current);
+
+      if (!imageBlob) {
+        toast.error('Failed to capture image. Please try again.');
         setIsVerifying(false);
         return;
       }
 
       setVerificationProgress(50);
-      setLivenessMessage('Verifying face and checking liveness...');
+      setLivenessMessage('Verifying your face...');
 
-      const response = await faceAPI.verifyLiveVideo(frames, currentLocation);
+      // Use photo-based verification instead of video
+      const response = await faceAPI.verifyFaceAttendance(imageBlob, currentLocation);
 
       setVerificationProgress(80);
 
@@ -137,9 +139,10 @@ const EmployeeAttendance = () => {
         setVerificationProgress(100);
         setLivenessMessage('Verification successful!');
         toast.success('Face verified! Marking attendance...');
-        
+
         const checkInResponse = await attendanceAPI.checkIn({
-          notes: 'Check-in via video face verification with liveness detection'
+          notes: 'Check-in via face verification',
+          faceVerified: true  // Flag to indicate face verification was successful
         });
 
         if (checkInResponse.data.success) {
@@ -148,7 +151,7 @@ const EmployeeAttendance = () => {
           setHasCheckedIn(true);
           setHasCheckedOut(false);
           fetchAttendanceHistory();
-          
+
           setTimeout(() => {
             closeFaceVerification();
           }, 1500);
@@ -158,24 +161,26 @@ const EmployeeAttendance = () => {
       } else {
         setVerificationStatus('failed');
         setVerificationProgress(100);
-        
+
         const errorMessage = response.data.message || 'Face verification failed';
         setLivenessMessage(errorMessage);
-        
-        const livenessScore = response.data.liveness_score;
-        const livenessPassed = response.data.liveness_passed;
-        
-        if (livenessPassed === false || (livenessScore !== undefined && livenessScore < 0.5)) {
-          toast.error('Liveness check failed. Please ensure you are a real person, not a photo or video.');
-        } else {
-          toast.error(errorMessage);
-        }
+        toast.error(errorMessage);
       }
     } catch (error) {
-      console.error('Video face verification error:', error);
+      console.error('Face verification error:', error);
       setVerificationStatus('failed');
       setVerificationProgress(100);
-      const errorMsg = error.response?.data?.message || error.message || 'Face verification failed';
+
+      // Handle timeout errors specifically
+      let errorMsg = 'Face verification failed';
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        errorMsg = 'Verification timeout. Please try again.';
+      } else if (error.response?.data?.message) {
+        errorMsg = error.response.data.message;
+      } else if (error.message) {
+        errorMsg = error.message;
+      }
+
       setLivenessMessage(errorMsg);
       toast.error(errorMsg);
     } finally {
@@ -560,12 +565,16 @@ const EmployeeAttendance = () => {
       </div>
 
       {showFaceVerification && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="glass-morphism neon-border rounded-2xl p-6 max-w-lg w-full">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          {/* Enhanced backdrop with blur */}
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-md" onClick={closeFaceVerification} />
+
+          {/* Modal content */}
+          <div className="relative glass-morphism neon-border rounded-2xl p-6 max-w-lg w-full shadow-2xl">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold text-white flex items-center space-x-2">
-                <Video className="w-5 h-5 text-neon-pink" />
-                <span>Video Face Verification</span>
+                <Camera className="w-5 h-5 text-neon-pink" />
+                <span>Face Verification</span>
               </h3>
               <button
                 onClick={closeFaceVerification}
@@ -656,7 +665,7 @@ const EmployeeAttendance = () => {
             </button>
 
             <p className="text-xs text-secondary-400 mt-3 text-center">
-              Your video is analyzed for liveness to prevent spoofing attempts
+              Your face will be verified against your registered profile
             </p>
           </div>
         </div>

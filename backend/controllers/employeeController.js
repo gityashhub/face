@@ -57,10 +57,11 @@ export const createEmployee = async (req, res) => {
       });
     }
 
-    if (faceDescriptor.length !== 512 || !faceDescriptor.every(val => typeof val === 'number' && !isNaN(val))) {
+    // face-api.js uses 128-dimensional descriptors (not 512 like InsightFace)
+    if (faceDescriptor.length !== 128 || !faceDescriptor.every(val => typeof val === 'number' && !isNaN(val))) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid face data. Face descriptor must be a valid 512-dimensional vector. Please recapture the face.'
+        message: `Invalid face data. Face descriptor must be a valid 128-dimensional vector (received ${faceDescriptor.length} dimensions). Please recapture the face.`
       });
     }
 

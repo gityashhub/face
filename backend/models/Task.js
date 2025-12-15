@@ -227,7 +227,7 @@ taskSchema.pre('save', function(next) {
 // Static method to get task statistics for an employee
 taskSchema.statics.getEmployeeStats = async function(employeeId) {
   const stats = await this.aggregate([
-    { $match: { assignedTo: mongoose.Types.ObjectId(employeeId) } },
+    { $match: { assignedTo: new mongoose.Types.ObjectId(employeeId) } },
     {
       $group: {
         _id: '$status',

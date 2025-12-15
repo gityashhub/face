@@ -32,11 +32,22 @@ export const faceAPI = {
 
   analyzeFrameBase64: async (imageBase64) => {
     try {
+      console.log('faceAPI.analyzeFrameBase64 called, image size:', imageBase64.length);
       return await api.post('/face-detection/analyze-frame-base64', {
         image: imageBase64
+      }, {
+        timeout: 30000, // 30 second timeout for face analysis
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
     } catch (error) {
       console.error('Error analyzing frame:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        response: error.response?.data
+      });
       throw error;
     }
   },
@@ -51,11 +62,19 @@ export const faceAPI = {
       formData.append('file', imageBlob, 'face.jpg');
       formData.append('location', JSON.stringify(location));
 
+      console.log('Verifying face attendance, image size:', imageBlob.size, 'bytes');
+
       return await api.post('/face-detection/verify-attendance', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 30000 // 30 second timeout
       });
     } catch (error) {
       console.error('Error verifying face:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        response: error.response?.data
+      });
       throw error;
     }
   },

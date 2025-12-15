@@ -528,8 +528,15 @@ const PurchaseOrders = () => {
 
       {/* Create/Edit Modals */}
       {(showCreateModal || showEditModal) && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="glass-morphism neon-border rounded-2xl p-4 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          {/* Enhanced backdrop with blur */}
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-md" onClick={() => {
+            setShowCreateModal(false);
+            setShowEditModal(false);
+          }} />
+
+          {/* Modal content */}
+          <div className="relative glass-morphism neon-border rounded-2xl p-4 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
             <h3 className="text-lg font-bold text-white mb-4">
               {showCreateModal ? 'Create Purchase Order' : 'Edit Purchase Order'}
             </h3>

@@ -51,15 +51,312 @@ body {
 }
 
 .glass-morphism {
-  background: rgba(255, 255, 255, 0.05);
-  /* backdrop-filter: blur(10px); */
-  /* @apply bg-dark-card/60 backdrop-blur-xl border border-white/10 shadow-lg; */
-  border: 1px solid rgba(30, 41, 59, 0.5);
+  background: rgba(30, 41, 59, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 
 .hover-glow:hover {
   box-shadow: 0 0 20px rgba(255, 0, 128, 0.3), 0 0 40px rgba(128, 0, 255, 0.2);
   transition: all 0.3s ease;
+}
+
+/* Modal backdrop with enhanced blur */
+.modal-backdrop {
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Prevent background scroll when modal is open */
+body.modal-open {
+  overflow: hidden;
+}
+
+/* Better focus styles for accessibility */
+*:focus-visible {
+  outline: 2px solid #ff0080;
+  outline-offset: 2px;
+}
+
+/* Smooth transitions for all interactive elements */
+button, a, input, select, textarea {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Improved text contrast for better readability */
+.text-readable {
+  color: #e2e8f0; /* Lighter than secondary-400 for better contrast */
+}
+
+.text-muted {
+  color: #94a3b8; /* secondary-400 - use sparingly */
+}
+
+.text-dimmed {
+  color: #cbd5e1; /* secondary-300 - better than 400 for readability */
+}
+
+/* Better input styles */
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: #ff0080;
+  ring: 2px;
+  ring-color: rgba(255, 0, 128, 0.2);
+}
+
+/* Improved button states */
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+button:not(:disabled):active {
+  transform: translateY(0);
+}
+
+/* Responsive utilities */
+@media (max-width: 640px) {
+  /* Smaller modals on mobile */
+  .glass-morphism {
+    max-width: 95vw;
+  }
+
+  /* Better touch targets */
+  button, a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Reduce padding on mobile */
+  .modal-content {
+    padding: 1rem;
+  }
+
+  /* Stack elements vertically on mobile */
+  .responsive-stack {
+    flex-direction: column;
+  }
+}
+
+/* Improved scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(30, 41, 59, 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 0, 128, 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 0, 128, 0.7);
+}
+
+/* Better table responsiveness */
+@media (max-width: 768px) {
+  table {
+    font-size: 0.875rem;
+  }
+
+  th, td {
+    padding: 0.5rem;
+  }
+}
+
+/* Form improvements */
+.form-input {
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  color: #e2e8f0;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease-in-out;
+}
+
+.form-input:focus {
+  background: rgba(30, 41, 59, 0.7);
+  border-color: #ff0080;
+  box-shadow: 0 0 0 3px rgba(255, 0, 128, 0.1);
+}
+
+.form-input::placeholder {
+  color: #94a3b8;
+}
+
+.form-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: rgba(30, 41, 59, 0.3);
+}
+
+.form-label {
+  color: #cbd5e1;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.form-error {
+  color: #f87171;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+.form-success {
+  color: #4ade80;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+/* Better validation states */
+.form-input.error {
+  border-color: #f87171;
+}
+
+.form-input.success {
+  border-color: #4ade80;
+}
+
+/* Loading states */
+.loading {
+  opacity: 0.6;
+  pointer-events: none;
+  position: relative;
+}
+
+.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border: 2px solid #ff0080;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Navigation improvements */
+.nav-link {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #ff0080, #8000ff);
+  transition: width 0.3s ease;
+}
+
+.nav-link:hover::after,
+.nav-link.active::after {
+  width: 100%;
+}
+
+/* Better spacing utilities */
+.section-spacing {
+  padding: 2rem 1rem;
+}
+
+@media (min-width: 640px) {
+  .section-spacing {
+    padding: 3rem 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .section-spacing {
+    padding: 4rem 2rem;
+  }
+}
+
+/* Card spacing */
+.card-spacing {
+  padding: 1rem;
+}
+
+@media (min-width: 640px) {
+  .card-spacing {
+    padding: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .card-spacing {
+    padding: 2rem;
+  }
+}
+
+/* Consistent gaps */
+.gap-responsive {
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .gap-responsive {
+    gap: 1rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .gap-responsive {
+    gap: 1.5rem;
+  }
+}
+
+/* Better hover effects */
+.hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(255, 0, 128, 0.2);
+}
+
+/* Skeleton loading */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(30, 41, 59, 0.5) 25%,
+    rgba(51, 65, 85, 0.5) 50%,
+    rgba(30, 41, 59, 0.5) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 /* Loading animation */

@@ -5,11 +5,9 @@ import toast from 'react-hot-toast';
 import { employeeAPI } from '../../utils/api';
 import { faceAPI, CameraHelper } from '../../utils/faceAPI';
 
-const ANGLES = ['front', 'left', 'right'];
+const ANGLES = ['front'];
 const ANGLE_INSTRUCTIONS = {
-  front: 'Look directly at the camera',
-  left: 'Turn your head slightly to the LEFT',
-  right: 'Turn your head slightly to the RIGHT'
+  front: 'Look straight ahead at the camera. Keep your head level and face the camera directly.'
 };
 
 const AdminFaceRegistration = () => {
@@ -21,7 +19,7 @@ const AdminFaceRegistration = () => {
   const [loading, setLoading] = useState(false);
   
   const [currentAngleIndex, setCurrentAngleIndex] = useState(0);
-  const [capturedImages, setCapturedImages] = useState({ front: null, left: null, right: null });
+  const [capturedImages, setCapturedImages] = useState({ front: null });
   const [qualityFeedback, setQualityFeedback] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
@@ -162,8 +160,8 @@ const AdminFaceRegistration = () => {
       return;
     }
 
-    if (!capturedImages.front || !capturedImages.left || !capturedImages.right) {
-      toast.error('Please capture all three angles before registering');
+    if (!capturedImages.front) {
+      toast.error('Please capture a front-facing image before registering');
       return;
     }
 
@@ -172,12 +170,12 @@ const AdminFaceRegistration = () => {
       const response = await faceAPI.registerMultiAngleFace(
         selectedEmployee._id,
         capturedImages.front,
-        capturedImages.left,
-        capturedImages.right
+        capturedImages.front,  // Use same front image for compatibility
+        capturedImages.front   // Use same front image for compatibility
       );
 
       if (response.data.success) {
-        toast.success('Face registered successfully with multi-angle capture!');
+        toast.success('Face registered successfully!');
         setRegistrationComplete(true);
         fetchEmployees();
       } else {
@@ -194,22 +192,22 @@ const AdminFaceRegistration = () => {
 
   const resetRegistration = () => {
     setSelectedEmployee(null);
-    setCapturedImages({ front: null, left: null, right: null });
+    setCapturedImages({ front: null });
     setCurrentAngleIndex(0);
     setQualityFeedback(null);
     setRegistrationComplete(false);
   };
 
-  const allAnglesCaptured = capturedImages.front && capturedImages.left && capturedImages.right;
+  const allAnglesCaptured = capturedImages.front;
 
   return (
     <AdminLayout>
       <div className="max-w-screen-lg mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <div className="glass-morphism neon-border rounded-2xl p-6">
           <h1 className="text-3xl font-bold text-white mb-2">
-            Video Face <span className="neon-text">Registration</span>
+            Face <span className="neon-text">Registration</span>
           </h1>
-          <p className="text-secondary-400">Register employee faces from multiple angles for secure attendance verification</p>
+          <p className="text-secondary-400">Register employee faces with high-accuracy front-facing capture for secure attendance verification</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
@@ -225,7 +223,7 @@ const AdminFaceRegistration = () => {
                     onClick={() => {
                       if (!isRegistering) {
                         setSelectedEmployee(employee);
-                        setCapturedImages({ front: null, left: null, right: null });
+                        setCapturedImages({ front: null });
                         setCurrentAngleIndex(0);
                         setRegistrationComplete(false);
                       }
@@ -264,7 +262,7 @@ const AdminFaceRegistration = () => {
 
           <div className="glass-morphism neon-border rounded-2xl p-6 lg:col-span-2">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-white">Multi-Angle Face Capture</h2>
+              <h2 className="text-xl font-bold text-white">Front-Facing Face Capture</h2>
               {selectedEmployee && (
                 <button
                   onClick={resetRegistration}

@@ -69,20 +69,25 @@ export const protect = async (req, res, next) => {
 
 // Admin only middleware
 export const adminOnly = (req, res, next) => {
+  console.log('adminOnly middleware - User:', req.user?.email, 'Role:', req.user?.role);
+
   if (!req.user) {
-    return res.status(401).json({ 
-      success: false, 
-      message: "Not authorized, user not found" 
+    console.log('Access denied - no user found');
+    return res.status(401).json({
+      success: false,
+      message: "Not authorized, user not found"
     });
   }
 
   if (req.user.role !== 'admin') {
-    return res.status(403).json({ 
-      success: false, 
-      message: "Access denied. Admin privileges required." 
+    console.log('Access denied - user is not admin');
+    return res.status(403).json({
+      success: false,
+      message: "Access denied. Admin privileges required."
     });
   }
 
+  console.log('Admin access granted');
   next();
 };
 

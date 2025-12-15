@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Building2,
@@ -25,7 +25,8 @@ const EmployeeLayout = ({ children, employeeData }) => {
   // 👈 Accept prop
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileDropdown, setProfileDropdown] = useState(false);
-  const [notifications] = useState([
+  const [notificationDropdown, setNotificationDropdown] = useState(false);
+  const [notifications, setNotifications] = useState([
     {
       id: 1,
       message: "Welcome to the company!",
@@ -48,6 +49,25 @@ const EmployeeLayout = ({ children, employeeData }) => {
 
   const location = useLocation();
   const navigate = useNavigate();
+  const notificationRef = useRef(null);
+  const profileRef = useRef(null);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setNotificationDropdown(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setProfileDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
  // In EmployeeLayout.js
 const sidebarItems = [
@@ -76,6 +96,17 @@ const sidebarItems = [
     navigate("/login");
   };
 
+  const markAsRead = (notificationId) => {
+    setNotifications(notifications.map(n =>
+      n.id === notificationId ? { ...n, unread: false } : n
+    ));
+  };
+
+  const markAllAsRead = () => {
+    setNotifications(notifications.map(n => ({ ...n, unread: false })));
+    toast.success('All notifications marked as read');
+  };
+
   const unreadNotifications = notifications.filter((n) => n.unread).length;
 
   return (
@@ -96,17 +127,31 @@ const sidebarItems = [
           {/* Logo */}
           <div className="flex items-center justify-between h-16 px-6 border-b border-secondary-700">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-neon-pink to-neon-purple rounded-lg flex items-center justify-center">
-                <Building2 className="w-6 h-6 text-white" />
+              {/* Logo Container - Fixed aspect ratio */}
+              <div className="w-12 h-12 rounded-lg overflow-hidden flex items-center justify-center bg-gradient-to-br from-neon-pink/10 to-neon-purple/10 border border-neon-pink/20 flex-shrink-0">
+                <img
+                  src="/src/assets/logo.jpg"
+                  alt="Taruna Technology Logo"
+                  className="w-full h-full object-contain p-1"
+                />
               </div>
-              <div>
-                <h1 className="text-lg font-bold text-white">Taruna Technology</h1>
-                <p className="text-xs text-secondary-400">Employee Portal</p>
+
+              {/* Text Container */}
+              <div className="flex flex-col justify-center min-w-0">
+                <h1 className="text-base font-bold text-white leading-tight tracking-wide">
+                  Taruna Technology
+                </h1>
+                <p className="text-xs text-secondary-400 leading-tight mt-0.5">
+                  Employee Portal
+                </p>
               </div>
             </div>
+
+            {/* Close button for mobile */}
             <button
               onClick={() => setSidebarOpen(false)}
-              className="lg:hidden text-secondary-400 hover:text-white"
+              className="lg:hidden text-secondary-400 hover:text-white transition-colors flex-shrink-0"
+              aria-label="Close sidebar"
             >
               <X className="w-5 h-5" />
             </button>
@@ -163,8 +208,11 @@ const sidebarItems = [
             {/* Right Section */}
             <div className="flex items-center space-x-4">
               {/* Notifications */}
-              <div className="relative">
-                <button className="relative p-2 text-secondary-400 hover:text-white transition-colors">
+              <div className="relative" ref={notificationRef}>
+                <button
+                  onClick={() => setNotificationDropdown(!notificationDropdown)}
+                  className="relative p-2 text-secondary-400 hover:text-white transition-colors"
+                >
                   <Bell className="w-6 h-6" />
                   {unreadNotifications > 0 && (
                     <span className="absolute -top-1 -right-1 w-5 h-5 bg-neon-pink rounded-full text-xs text-white flex items-center justify-center animate-pulse">
@@ -172,10 +220,62 @@ const sidebarItems = [
                     </span>
                   )}
                 </button>
+
+                {/* Notification Dropdown */}
+                {notificationDropdown && (
+                  <div className="absolute right-0 mt-2 w-80 glass-morphism rounded-lg border border-secondary-600 shadow-lg z-50 max-h-96 overflow-hidden">
+                    <div className="p-4 border-b border-secondary-600 flex items-center justify-between">
+                      <h3 className="text-sm font-semibold text-white">Notifications</h3>
+                      {unreadNotifications > 0 && (
+                        <button
+                          onClick={markAllAsRead}
+                          className="text-xs text-neon-pink hover:text-neon-purple transition-colors"
+                        >
+                          Mark all as read
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="max-h-80 overflow-y-auto">
+                      {notifications.length > 0 ? (
+                        notifications.map((notification) => (
+                          <div
+                            key={notification.id}
+                            onClick={() => markAsRead(notification.id)}
+                            className={`p-4 border-b border-secondary-700 hover:bg-secondary-700/30 cursor-pointer transition-colors ${
+                              notification.unread ? 'bg-neon-pink/5' : ''
+                            }`}
+                          >
+                            <div className="flex items-start space-x-3">
+                              <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
+                                notification.unread ? 'bg-neon-pink' : 'bg-secondary-600'
+                              }`} />
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-sm ${
+                                  notification.unread ? 'text-white font-medium' : 'text-secondary-300'
+                                }`}>
+                                  {notification.message}
+                                </p>
+                                <p className="text-xs text-secondary-500 mt-1">
+                                  {notification.time}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-8 text-center">
+                          <Bell className="w-12 h-12 text-secondary-600 mx-auto mb-3" />
+                          <p className="text-secondary-400 text-sm">No notifications</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Profile Dropdown */}
-              <div className="relative">
+              <div className="relative" ref={profileRef}>
                 <button
                   onClick={() => setProfileDropdown(!profileDropdown)}
                   className="flex items-center space-x-3 p-2 rounded-lg hover:bg-secondary-700/50 transition-colors"

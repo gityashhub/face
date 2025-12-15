@@ -154,7 +154,7 @@ leaveSchema.statics.getLeaveStats = async function(employeeId, year = new Date()
   const stats = await this.aggregate([
     {
       $match: {
-        employee: mongoose.Types.ObjectId(employeeId),
+        employee: new mongoose.Types.ObjectId(employeeId),
         status: 'Approved',
         startDate: { $gte: startDate, $lte: endDate }
       }

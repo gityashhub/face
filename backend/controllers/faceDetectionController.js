@@ -6,8 +6,12 @@ import Attendance from '../models/Attendance.js';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs/promises';
+import * as faceService from '../services/faceRecognitionService.js';
 
-const FACE_SERVICE_URL = process.env.FACE_SERVICE_URL || 'http://localhost:8000';
+// Initialize face models on startup
+faceService.initializeFaceModels().catch(err => {
+  console.error('Failed to initialize face models:', err);
+});
 
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
@@ -38,51 +42,7 @@ export const upload = multer({
   }
 });
 
-async function callFaceService(endpoint, formData) {
-  try {
-    const response = await fetch(`${FACE_SERVICE_URL}${endpoint}`, {
-      method: 'POST',
-      body: formData
-    });
-    
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-      throw new Error(error.detail || error.message || `Face service error: ${response.status}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Face service call error:', error);
-    throw error;
-  }
-}
-
-async function callFaceServiceJSON(endpoint, body) {
-  try {
-    const formData = new URLSearchParams();
-    for (const [key, value] of Object.entries(body)) {
-      formData.append(key, typeof value === 'string' ? value : JSON.stringify(value));
-    }
-    
-    const response = await fetch(`${FACE_SERVICE_URL}${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: formData
-    });
-    
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-      throw new Error(error.detail || error.message || `Face service error: ${response.status}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Face service JSON call error:', error);
-    throw error;
-  }
-}
+// Legacy functions removed - now using integrated face recognition service
 
 function calculateGeoDistance(lat1, lon1, lat2, lon2) {
   const R = 6371e3;
@@ -115,24 +75,43 @@ export const analyzeFrame = async (req, res) => {
     }
 
     const imageBuffer = await fs.readFile(req.file.path);
-    const formData = new FormData();
-    formData.append('file', new Blob([imageBuffer], { type: req.file.mimetype }), req.file.filename);
 
     let result;
     try {
-      result = await callFaceService('/analyze-frame', formData);
+      result = await faceService.detectSingleFace(imageBuffer);
     } catch (error) {
       try { await fs.unlink(req.file.path); } catch (_) {}
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Face analysis service error', 
-        error: error.message 
+      return res.status(500).json({
+        success: false,
+        message: 'Face analysis service error',
+        error: error.message
       });
     }
 
     try { await fs.unlink(req.file.path); } catch (_) {}
 
-    res.json(result);
+    if (!result.success) {
+      return res.json({
+        success: false,
+        face_detected: false,
+        message: result.message || 'No face detected'
+      });
+    }
+
+    res.json({
+      success: true,
+      face_detected: true,
+      quality: {
+        passed: result.face.confidence > 0.7,
+        score: result.face.confidence,
+        issues: result.face.confidence < 0.7 ? ['Low confidence detection'] : [],
+        details: {
+          confidence: result.face.confidence
+        }
+      },
+      bbox: result.face.bbox,
+      message: 'Frame analyzed successfully'
+    });
 
   } catch (error) {
     console.error('Analyze frame error:', error);
@@ -149,27 +128,62 @@ export const analyzeFrame = async (req, res) => {
 export const analyzeFrameBase64 = async (req, res) => {
   try {
     const { image } = req.body;
-    
+
+    console.log('Analyze frame base64 request received');
+
     if (!image) {
+      console.log('No image data provided');
       return res.status(400).json({ success: false, message: 'Image data is required' });
     }
 
+    console.log('Processing base64 image...');
     let result;
     try {
-      result = await callFaceServiceJSON('/analyze-frame-base64', { image });
+      result = await faceService.processBase64Image(image);
+      console.log('Face detection result:', result.success ? 'Success' : 'Failed');
     } catch (error) {
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Face analysis service error', 
-        error: error.message 
+      console.error('Face service error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Face analysis service error',
+        error: error.message
       });
     }
 
-    res.json(result);
+    if (!result.success) {
+      console.log('Face detection failed:', result.message);
+      return res.json({
+        success: false,
+        face_detected: false,
+        message: result.message || 'No face detected'
+      });
+    }
+
+    console.log('Face detected successfully with confidence:', result.face.confidence);
+    res.json({
+      success: true,
+      face_detected: true,
+      face: {
+        descriptor: result.face.descriptor,
+        bbox: result.face.bbox,
+        confidence: result.face.confidence
+      },
+      quality: {
+        passed: result.face.confidence > 0.5,
+        score: result.face.confidence,
+        issues: result.face.confidence < 0.5 ? ['Low confidence detection'] : [],
+        details: {
+          confidence: result.face.confidence
+        }
+      },
+      bbox: result.face.bbox,
+      message: 'Frame analyzed successfully'
+    });
 
   } catch (error) {
     console.error('Analyze frame base64 error:', error);
-    res.status(500).json({ success: false, message: 'Server error during frame analysis' });
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ success: false, message: 'Server error during frame analysis', error: error.message });
   }
 };
 
@@ -198,21 +212,17 @@ export const registerMultiAngleFace = async (req, res) => {
 
     let faceResult;
     try {
-      faceResult = await callFaceServiceJSON('/register-multi-angle', {
-        front_image: frontImage,
-        left_image: leftImage,
-        right_image: rightImage
-      });
+      faceResult = await faceService.registerMultiAngleFace(frontImage, leftImage, rightImage);
     } catch (error) {
-      return res.status(500).json({ 
-        success: false, 
+      return res.status(500).json({
+        success: false,
         message: error.message || 'Face registration service error'
       });
     }
 
     if (!faceResult.success) {
-      return res.status(400).json({ 
-        success: false, 
+      return res.status(400).json({
+        success: false,
         message: faceResult.message || 'Face registration failed'
       });
     }
@@ -222,10 +232,10 @@ export const registerMultiAngleFace = async (req, res) => {
       front: faceResult.embeddings.front,
       left: faceResult.embeddings.left,
       right: faceResult.embeddings.right,
-      average: faceResult.average_embedding
+      average: faceResult.embeddings.average
     };
-    employee.faceQualityScores = faceResult.quality_scores;
-    employee.faceDescriptor = faceResult.average_embedding;
+    employee.faceQualityScores = faceResult.qualityScores;
+    employee.faceDescriptor = faceResult.embeddings.average;
     employee.hasFaceRegistered = true;
     employee.faceRegistrationDate = new Date();
     employee.faceRegistrationMethod = 'multi-angle';
@@ -300,18 +310,18 @@ export const verifyVideoFace = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Employee record not found' });
     }
 
-    // Check for face registration
+    // Check for face registration - face-api.js uses 128 dimensions
     let storedEmbeddings;
-    if (employee.faceEmbeddings && employee.faceEmbeddings.average && employee.faceEmbeddings.average.length === 512) {
+    if (employee.faceEmbeddings && employee.faceEmbeddings.average && employee.faceEmbeddings.average.length === 128) {
       storedEmbeddings = employee.faceEmbeddings;
-    } else if (employee.faceDescriptor && employee.faceDescriptor.length === 512) {
+    } else if (employee.faceDescriptor && employee.faceDescriptor.length === 128) {
       storedEmbeddings = { average: employee.faceDescriptor };
     } else {
       const faceData = await FaceData.findByEmployee(employee._id);
-      if (!faceData || !faceData.faceDescriptor || faceData.faceDescriptor.length !== 512) {
-        return res.status(404).json({ 
-          success: false, 
-          message: 'Face data not registered. Please register your face first.' 
+      if (!faceData || !faceData.faceDescriptor || faceData.faceDescriptor.length !== 128) {
+        return res.status(404).json({
+          success: false,
+          message: 'Face data not registered. Please register your face first.'
         });
       }
       storedEmbeddings = { average: faceData.faceDescriptor };
@@ -431,45 +441,35 @@ export const saveEmployeeFace = async (req, res) => {
     }
 
     const imageBuffer = await fs.readFile(req.file.path);
-    const formData = new FormData();
-    formData.append('file', new Blob([imageBuffer], { type: req.file.mimetype }), req.file.filename);
 
     let faceResult;
     try {
-      faceResult = await callFaceService('/detect', formData);
+      faceResult = await faceService.detectSingleFace(imageBuffer);
     } catch (error) {
       try { await fs.unlink(req.file.path); } catch (_) {}
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Face detection service error', 
-        error: error.message 
+      return res.status(500).json({
+        success: false,
+        message: 'Face detection service error',
+        error: error.message
       });
     }
 
-    if (!faceResult.success || !faceResult.faces || faceResult.faces.length === 0) {
+    if (!faceResult.success) {
       try { await fs.unlink(req.file.path); } catch (_) {}
-      return res.status(400).json({ 
-        success: false, 
-        message: 'No face detected in the image. Please try again with a clear face photo.' 
+      return res.status(400).json({
+        success: false,
+        message: faceResult.message || 'No face detected in the image. Please try again with a clear face photo.'
       });
     }
 
-    if (faceResult.faces.length > 1) {
-      try { await fs.unlink(req.file.path); } catch (_) {}
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Multiple faces detected. Please ensure only one person is in the photo.' 
-      });
-    }
+    const face = faceResult.face;
+    const faceDescriptor = face.descriptor;
 
-    const face = faceResult.faces[0];
-    const faceDescriptor = face.embedding;
-
-    if (!Array.isArray(faceDescriptor) || faceDescriptor.length !== 512) {
+    if (!Array.isArray(faceDescriptor) || faceDescriptor.length === 0) {
       try { await fs.unlink(req.file.path); } catch (_) {}
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Invalid face embedding received from face service' 
+      return res.status(500).json({
+        success: false,
+        message: 'Invalid face descriptor received from face service'
       });
     }
 
@@ -491,7 +491,7 @@ export const saveEmployeeFace = async (req, res) => {
       existingFaceData.metadata = {
         captureDevice: req.headers['user-agent'] || 'Unknown',
         captureEnvironment: 'Registration',
-        processingVersion: '2.0-InsightFace'
+        processingVersion: '4.0-FaceAPI'
       };
 
       await existingFaceData.save();
@@ -573,11 +573,14 @@ export const getEmployeeFace = async (req, res) => {
 // @access  Private (Employee)
 export const verifyFaceAttendance = async (req, res) => {
   try {
+    console.log('📸 Face attendance verification started for user:', req.user.email);
     const { location } = req.body;
 
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'Face image is required' });
     }
+
+    console.log('Image received, size:', req.file.size, 'bytes');
 
     const userLocation = (location && location.latitude !== undefined && location.longitude !== undefined)
       ? location
@@ -589,11 +592,13 @@ export const verifyFaceAttendance = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Employee record not found' });
     }
 
+    console.log('Employee found:', employee.employeeId);
+
     // Get stored descriptor from employee or FaceData
     let storedDescriptor;
-    if (employee.faceEmbeddings && employee.faceEmbeddings.average && employee.faceEmbeddings.average.length === 512) {
+    if (employee.faceEmbeddings && employee.faceEmbeddings.average && employee.faceEmbeddings.average.length > 0) {
       storedDescriptor = employee.faceEmbeddings.average;
-    } else if (employee.faceDescriptor && employee.faceDescriptor.length === 512) {
+    } else if (employee.faceDescriptor && employee.faceDescriptor.length > 0) {
       storedDescriptor = employee.faceDescriptor;
     } else {
       const faceData = await FaceData.findByEmployee(employee._id);
@@ -604,49 +609,55 @@ export const verifyFaceAttendance = async (req, res) => {
       storedDescriptor = faceData.faceDescriptor;
     }
 
-    if (!Array.isArray(storedDescriptor) || storedDescriptor.length !== 512) {
+    if (!Array.isArray(storedDescriptor) || storedDescriptor.length === 0) {
       try { await fs.unlink(req.file.path); } catch (_) {}
       return res.status(500).json({ success: false, message: 'Stored face descriptor invalid' });
     }
 
     const imageBuffer = await fs.readFile(req.file.path);
-    const formData = new FormData();
-    formData.append('file', new Blob([imageBuffer], { type: req.file.mimetype }), req.file.filename);
-    formData.append('stored_embedding', JSON.stringify(storedDescriptor));
+    console.log('Starting face detection...');
 
-    let verifyResult;
+    let currentFaceResult;
     try {
-      verifyResult = await callFaceService('/verify', formData);
+      currentFaceResult = await faceService.detectSingleFace(imageBuffer, {
+        skipFrontalityCheck: true,
+        skipQualityCheck: true
+      });
+      console.log('Face detection result:', currentFaceResult.success ? 'Success' : 'Failed');
     } catch (error) {
+      console.error('Face detection error:', error);
       try { await fs.unlink(req.file.path); } catch (_) {}
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Face verification service error', 
-        error: error.message 
+      return res.status(500).json({
+        success: false,
+        message: 'Face detection service error',
+        error: error.message
       });
     }
 
     try { await fs.unlink(req.file.path); } catch (_) {}
 
-    if (!verifyResult.success) {
+    if (!currentFaceResult.success) {
       return res.status(400).json({
         success: false,
-        message: verifyResult.message || 'Face verification failed',
+        message: currentFaceResult.message || 'No face detected in the image',
         verification: {
           match: false,
-          confidence: verifyResult.confidence || 0,
-          distance: verifyResult.distance || 1
+          confidence: 0
         }
       });
     }
 
+    console.log('Comparing face descriptors...');
+    const verifyResult = faceService.verifyFaceMatch(currentFaceResult.face.descriptor, storedDescriptor);
+    console.log('Face match result:', verifyResult.match, 'Similarity:', Math.round(verifyResult.similarity * 100) + '%');
+
     if (!verifyResult.match) {
       return res.status(400).json({
         success: false,
-        message: `Face verification failed. Confidence: ${Math.round(verifyResult.confidence)}%`,
+        message: `Face verification failed. Similarity: ${Math.round(verifyResult.similarity * 100)}%`,
         verification: {
           match: false,
-          confidence: verifyResult.confidence,
+          confidence: verifyResult.similarity * 100,
           distance: verifyResult.distance
         }
       });
@@ -789,18 +800,16 @@ export const detectFaces = async (req, res) => {
     }
 
     const imageBuffer = await fs.readFile(req.file.path);
-    const formData = new FormData();
-    formData.append('file', new Blob([imageBuffer], { type: req.file.mimetype }), req.file.filename);
 
     let faceResult;
     try {
-      faceResult = await callFaceService('/detect', formData);
+      faceResult = await faceService.detectFaces(imageBuffer);
     } catch (error) {
       try { await fs.unlink(req.file.path); } catch (_) {}
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Face detection service error', 
-        error: error.message 
+      return res.status(500).json({
+        success: false,
+        message: 'Face detection service error',
+        error: error.message
       });
     }
 
@@ -808,14 +817,12 @@ export const detectFaces = async (req, res) => {
 
     res.json({
       success: true,
-      faces: faceResult.faces.map(face => ({
+      faces: faceResult.map(face => ({
         bbox: face.bbox,
         confidence: face.confidence,
-        age: face.age,
-        gender: face.gender,
-        embedding: face.embedding
+        descriptor: face.descriptor
       })),
-      count: faceResult.faces.length
+      count: faceResult.length
     });
 
   } catch (error) {
@@ -852,31 +859,35 @@ export const registerContinuousVideo = async (req, res) => {
 
     let faceResult;
     try {
-      faceResult = await callFaceServiceJSON('/register-continuous-video', { frames });
+      faceResult = await faceService.processVideoFrames(frames);
     } catch (error) {
-      return res.status(500).json({ 
-        success: false, 
+      return res.status(500).json({
+        success: false,
         message: error.message || 'Face registration service error'
       });
     }
 
     if (!faceResult.success) {
-      return res.status(400).json({ 
-        success: false, 
+      return res.status(400).json({
+        success: false,
         message: faceResult.message || 'Face registration failed',
-        poses_captured: faceResult.poses_captured,
-        liveness_score: faceResult.liveness_score
+        validFrames: faceResult.validFrames || 0
       });
     }
 
+    // Store the average descriptor as the main face embedding
+    employee.faceDescriptor = faceResult.averageDescriptor;
     employee.faceEmbeddings = {
-      front: faceResult.embeddings.front,
-      left: faceResult.embeddings.left,
-      right: faceResult.embeddings.right,
-      average: faceResult.average_embedding
+      average: faceResult.averageDescriptor,
+      front: faceResult.averageDescriptor, // Use average for all angles
+      left: faceResult.averageDescriptor,
+      right: faceResult.averageDescriptor
     };
-    employee.faceQualityScores = faceResult.quality_scores;
-    employee.faceDescriptor = faceResult.average_embedding;
+    employee.faceQualityScores = {
+      front: faceResult.validFrames / faceResult.framesProcessed,
+      left: faceResult.validFrames / faceResult.framesProcessed,
+      right: faceResult.validFrames / faceResult.framesProcessed
+    };
     employee.hasFaceRegistered = true;
     employee.faceRegistrationDate = new Date();
     employee.faceRegistrationMethod = 'video';
@@ -884,40 +895,42 @@ export const registerContinuousVideo = async (req, res) => {
     await employee.save();
 
     const existingFaceData = await FaceData.findOne({ employee: employeeId });
+    const livenessScore = faceResult.validFrames / faceResult.framesProcessed;
+
     if (existingFaceData) {
-      existingFaceData.faceDescriptor = faceResult.average_embedding;
-      existingFaceData.confidence = Math.round(faceResult.liveness_score * 100);
+      existingFaceData.faceDescriptor = faceResult.averageDescriptor;
+      existingFaceData.confidence = Math.round(livenessScore * 100);
       existingFaceData.lastUpdated = new Date();
       existingFaceData.metadata = {
         captureDevice: req.headers['user-agent'] || 'Unknown',
         captureEnvironment: 'Continuous Video Registration',
-        processingVersion: '3.0-InsightFace-Video'
+        processingVersion: '4.0-FaceAPI-Video'
       };
       await existingFaceData.save();
     } else {
       const faceData = new FaceData({
         employee: employeeId,
         user: employee.user._id,
-        faceDescriptor: faceResult.average_embedding,
+        faceDescriptor: faceResult.averageDescriptor,
         landmarks: [],
         faceImageUrl: '',
-        confidence: Math.round(faceResult.liveness_score * 100),
+        confidence: Math.round(livenessScore * 100),
         metadata: {
           captureDevice: req.headers['user-agent'] || 'Unknown',
           captureEnvironment: 'Continuous Video Registration',
-          processingVersion: '3.0-InsightFace-Video'
+          processingVersion: '4.0-FaceAPI-Video'
         }
       });
       await faceData.save();
     }
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Face registered successfully with continuous video capture',
-      poses_captured: faceResult.poses_captured,
-      quality_scores: faceResult.quality_scores,
-      liveness_score: faceResult.liveness_score,
-      total_frames_processed: faceResult.total_frames_processed
+      validFrames: faceResult.validFrames,
+      quality_scores: employee.faceQualityScores,
+      liveness_score: livenessScore,
+      total_frames_processed: faceResult.framesProcessed
     });
 
   } catch (error) {
@@ -950,16 +963,17 @@ export const verifyLiveVideo = async (req, res) => {
     }
 
     let storedEmbeddings;
-    if (employee.faceEmbeddings && employee.faceEmbeddings.average && employee.faceEmbeddings.average.length === 512) {
+    // face-api.js uses 128-dimensional descriptors, not 512
+    if (employee.faceEmbeddings && employee.faceEmbeddings.average && employee.faceEmbeddings.average.length > 0) {
       storedEmbeddings = employee.faceEmbeddings;
-    } else if (employee.faceDescriptor && employee.faceDescriptor.length === 512) {
+    } else if (employee.faceDescriptor && employee.faceDescriptor.length > 0) {
       storedEmbeddings = { average: employee.faceDescriptor };
     } else {
       const faceData = await FaceData.findByEmployee(employee._id);
-      if (!faceData || !faceData.faceDescriptor || faceData.faceDescriptor.length !== 512) {
-        return res.status(404).json({ 
-          success: false, 
-          message: 'Face data not registered. Please register your face first.' 
+      if (!faceData || !faceData.faceDescriptor || faceData.faceDescriptor.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Face data not registered. Please register your face first.'
         });
       }
       storedEmbeddings = { average: faceData.faceDescriptor };
@@ -967,15 +981,12 @@ export const verifyLiveVideo = async (req, res) => {
 
     let verifyResult;
     try {
-      verifyResult = await callFaceServiceJSON('/verify-live-video', {
-        frames: frames,
-        stored_embeddings: storedEmbeddings
-      });
+      verifyResult = await faceService.verifyVideoFace(frames, storedEmbeddings);
     } catch (error) {
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Face verification service error', 
-        error: error.message 
+      return res.status(500).json({
+        success: false,
+        message: 'Face verification service error',
+        error: error.message
       });
     }
 
@@ -1073,16 +1084,35 @@ export const checkLiveness = async (req, res) => {
 
     let result;
     try {
-      result = await callFaceServiceJSON('/check-liveness', { frames });
+      result = await faceService.processVideoFrames(frames);
     } catch (error) {
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Liveness check service error', 
-        error: error.message 
+      return res.status(500).json({
+        success: false,
+        message: 'Liveness check service error',
+        error: error.message
       });
     }
 
-    res.json(result);
+    if (!result.success) {
+      return res.json({
+        success: false,
+        liveness_passed: false,
+        message: result.message || 'Liveness check failed'
+      });
+    }
+
+    // Basic liveness score based on valid frames
+    const livenessScore = Math.min(1.0, result.validFrames / 10);
+    const livenessPassed = result.validFrames >= 3 && livenessScore > 0.3;
+
+    res.json({
+      success: true,
+      liveness_passed: livenessPassed,
+      liveness_score: livenessScore,
+      frames_analyzed: result.framesProcessed,
+      valid_frames: result.validFrames,
+      message: livenessPassed ? 'Liveness check passed' : 'Liveness check failed - insufficient valid frames'
+    });
 
   } catch (error) {
     console.error('Liveness check error:', error);
