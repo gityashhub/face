@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import EmployeeLayout from '../../components/Employee/EmployeeLayout/EmployeeLayout';
 import {
-  User, Clock, Calendar, DollarSign, CheckCircle, AlertCircle, MapPin, Bell, Award, Target, TrendingUp, FileText, MessageCircle, X, Send, Bot, Camera
+  User, Clock, Calendar, DollarSign, CheckCircle, AlertCircle, MapPin, Bell, Award, Target, TrendingUp, FileText, MessageCircle, X, Send, Bot, Camera, Download
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { employeeAPI, authAPI, attendanceAPI, payslipAPI } from '../../utils/api';
@@ -258,6 +258,33 @@ const EmployeeDashboard = () => {
       setCurrentPayslip(null);
     } finally {
       setPayslipLoading(false);
+    }
+  };
+
+  const handleDownloadPayslip = async () => {
+    if (!currentPayslip?._id) {
+      toast.error('No payslip available to download');
+      return;
+    }
+
+    try {
+      toast.loading('Preparing download...', { id: 'payslip-download' });
+      const response = await payslipAPI.downloadPayslip(currentPayslip._id);
+      
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Payslip_${currentPayslip.employeeId}_${currentPayslip.period.month}_${currentPayslip.period.year}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('Payslip downloaded successfully!', { id: 'payslip-download' });
+    } catch (error) {
+      console.error('Error downloading payslip:', error);
+      toast.error('Failed to download payslip. Please try again.', { id: 'payslip-download' });
     }
   };
 
@@ -1323,6 +1350,17 @@ const EmployeeDashboard = () => {
                             <p className="text-secondary-300 text-sm">{currentPayslip.remarks}</p>
                           </div>
                         )}
+
+                        {/* Download Button */}
+                        <div className="flex justify-center pt-4">
+                          <button
+                            onClick={handleDownloadPayslip}
+                            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-neon-pink to-neon-purple text-white font-semibold rounded-lg hover:opacity-90 transition-opacity shadow-lg"
+                          >
+                            <Download className="w-5 h-5" />
+                            Download Payslip PDF
+                          </button>
+                        </div>
                       </>
                     )}
 
