@@ -54,6 +54,10 @@ externalPort = 3001
 localPort = 5001
 externalPort = 80
 
+[[ports]]
+localPort = 5000
+externalPort = 80
+
 [deployment]
 deploymentTarget = "vm"
 run = ["bash", "-c", "cd backend && NODE_ENV=production PORT=5000 node server.js"]
@@ -63,3 +67,4 @@ build = ["bash", "-c", "cd frontend && npm run build"]
 
 [userenv.shared]
 JWT_SECRET = "faceverification2025secretkey"
+BACKEND_PORT = "3001"
