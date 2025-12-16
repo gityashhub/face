@@ -540,6 +540,13 @@ export const aiAPI = {
   chat: (message) => API.post('/ai/chat', { message })
 };
 
+// Bot API calls
+export const botAPI = {
+  sendMessage: (text, userId) => API.post('/bot/message', { text, userId }),
+  sendAdminMessage: (text) => API.post('/bot/admin-message', { text }),
+  getHistory: (userId) => API.get(`/bot/history/${userId}`)
+};
+
 // Purchase API calls
 export const purchaseAPI = {
   getPurchaseOrders: (filters) => API.get('/purchase', { params: filters }),

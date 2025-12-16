@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, Bot, User } from 'lucide-react';
-import { employeeAPI, departmentAPI, attendanceAPI, dashboardAPI, aiAPI } from '../../../utils/api';
+import { employeeAPI, departmentAPI, attendanceAPI, dashboardAPI, aiAPI, botAPI } from '../../../utils/api';
 import { taskService } from '../../../services/taskService';
 
 const AdminChatbot = ({ isOpen, onClose, isAdmin }) => {
@@ -600,21 +600,21 @@ const AdminChatbot = ({ isOpen, onClose, isAdmin }) => {
       return await parseCommand(input);
     }
 
-    // For general questions and natural language, use AI
+    // For general questions and natural language, use AI HR Bot with all employee context
     try {
-      const aiRes = await aiAPI.chat(input);
-      if (aiRes.data && aiRes.data.success && aiRes.data.data) {
-        return aiRes.data.data.response || "Sorry, I couldn't get a response from AI.";
+      const botRes = await botAPI.sendAdminMessage(input);
+      if (botRes.data && botRes.data.success && botRes.data.response) {
+        return botRes.data.response;
       }
-      return "Sorry, I couldn't get a response from AI.";
-    } catch (aiError) {
-      console.error('AI chat error:', aiError);
-      // Fallback to structured parsing if AI fails
+      return "Sorry, I couldn't get a response from the AI assistant.";
+    } catch (botError) {
+      console.error('Admin bot error:', botError);
+      // Fallback to structured parsing if bot fails
       const fallbackResponse = await parseCommand(input);
       if (fallbackResponse && !fallbackResponse.startsWith("I'm sorry")) {
         return fallbackResponse;
       }
-      return "Sorry, I couldn't process your request with AI.";
+      return "Sorry, I couldn't process your request. Please try again.";
     }
   };
 
