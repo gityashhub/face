@@ -34,6 +34,7 @@ A full-stack Employee Management System built with React (Vite) frontend and Nod
 - Department management
 - Sales lead management
 - Real-time chat (Socket.IO)
+- **Group Chat** - Create groups, add/remove members, owner/admin permissions, real-time messaging
 - AI chatbot integration
 - Purchase order management
 - **Payslip Management** - Admin can generate, bulk generate, view, and download employee payslips
