@@ -5,7 +5,7 @@ import {
   User, Clock, Calendar, DollarSign, CheckCircle, AlertCircle, MapPin, Bell, Award, Target, TrendingUp, FileText, MessageCircle, X, Send, Bot, Camera
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { employeeAPI, authAPI, attendanceAPI } from '../../utils/api';
+import { employeeAPI, authAPI, attendanceAPI, payslipAPI } from '../../utils/api';
 import API from '../../utils/api';
 import { geolocationUtils } from '../../utils/geolocationUtils';
 import io from 'socket.io-client';
@@ -25,6 +25,8 @@ const EmployeeDashboard = () => {
   const [showChatModal, setShowChatModal] = useState(false);
   const [showBotModal, setShowBotModal] = useState(false);
   const [showPayslipModal, setShowPayslipModal] = useState(false);
+  const [currentPayslip, setCurrentPayslip] = useState(null);
+  const [payslipLoading, setPayslipLoading] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
   const [botMessages, setBotMessages] = useState([]);
   const [selectedPeer, setSelectedPeer] = useState(null);
@@ -223,6 +225,42 @@ const EmployeeDashboard = () => {
     }
   }, [showBotModal, employeeData]);
 
+  const handleViewPayslip = async () => {
+    try {
+      setPayslipLoading(true);
+      setShowPayslipModal(true);
+
+      // Get current month and year
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const currentYear = now.getFullYear();
+
+      // Fetch payslips for current user
+      const response = await payslipAPI.getPayslips({
+        month: currentMonth,
+        year: currentYear
+      });
+
+      console.log('Employee payslip response:', response.data);
+
+      const payslips = response.data?.data?.payslips || [];
+
+      if (payslips.length > 0) {
+        // Get the most recent payslip
+        setCurrentPayslip(payslips[0]);
+      } else {
+        setCurrentPayslip(null);
+        toast.info('No payslip generated for current month');
+      }
+    } catch (error) {
+      console.error('Error fetching payslip:', error);
+      toast.error('Failed to load payslip');
+      setCurrentPayslip(null);
+    } finally {
+      setPayslipLoading(false);
+    }
+  };
+
   const handlePdfDownload = async (url) => {
     try {
       const filename = url.split('/').pop();
@@ -238,7 +276,7 @@ const EmployeeDashboard = () => {
 
       const blob = await response.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
-      
+
       const link = document.createElement('a');
       link.href = downloadUrl;
       link.download = filename;
@@ -246,7 +284,7 @@ const EmployeeDashboard = () => {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(downloadUrl);
-      
+
       toast.success('Document downloaded successfully!');
     } catch (error) {
       console.error('PDF download error:', error);
@@ -824,8 +862,8 @@ const EmployeeDashboard = () => {
               <Calendar className="w-8 h-8 text-secondary-400 group-hover:text-neon-purple mx-auto mb-2" />
               <p className="text-sm text-secondary-400 group-hover:text-white">Apply Leave</p>
             </button>
-            <button 
-              onClick={() => setShowPayslipModal(true)}
+            <button
+              onClick={handleViewPayslip}
               className="p-4 rounded-lg border-2 border-dashed border-secondary-600 hover:border-neon-pink/50 hover:bg-neon-pink/5 group">
               <FileText className="w-8 h-8 text-secondary-400 group-hover:text-neon-pink mx-auto mb-2" />
               <p className="text-sm text-secondary-400 group-hover:text-white">View Payslip</p>
@@ -1101,140 +1139,193 @@ const EmployeeDashboard = () => {
                 </button>
               </div>
               <div className="p-6 space-y-6">
-                {/* Employee Info */}
-                <div className="bg-secondary-800/50 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-white mb-3">Employee Details</h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-secondary-400">Name:</span>
-                      <span className="text-white ml-2">{employeeData.personalInfo?.firstName} {employeeData.personalInfo?.lastName}</span>
-                    </div>
-                    <div>
-                      <span className="text-secondary-400">Employee ID:</span>
-                      <span className="text-white ml-2">{employeeData.employeeId}</span>
-                    </div>
-                    <div>
-                      <span className="text-secondary-400">Department:</span>
-                      <span className="text-white ml-2">{employeeData.workInfo?.department?.name || employeeData.department || 'N/A'}</span>
-                    </div>
-                    <div>
-                      <span className="text-secondary-400">Position:</span>
-                      <span className="text-white ml-2">{employeeData.workInfo?.position || 'N/A'}</span>
-                    </div>
+                {payslipLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-neon-pink"></div>
                   </div>
-                </div>
-
-                {/* Earnings */}
-                <div className="bg-secondary-800/50 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-green-400 mb-3">Earnings</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-secondary-400">Basic Salary</span>
-                      <span className="text-white">₹{(employeeData.salaryInfo?.basicSalary || 0).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-secondary-400">HRA</span>
-                      <span className="text-white">₹{(employeeData.salaryInfo?.allowances?.hra || 0).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-secondary-400">Medical Allowance</span>
-                      <span className="text-white">₹{(employeeData.salaryInfo?.allowances?.medical || 0).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-secondary-400">Transport Allowance</span>
-                      <span className="text-white">₹{(employeeData.salaryInfo?.allowances?.transport || 0).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-secondary-400">Other Allowances</span>
-                      <span className="text-white">₹{(employeeData.salaryInfo?.allowances?.other || 0).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between border-t border-secondary-600 pt-2 font-semibold">
-                      <span className="text-green-400">Total Earnings</span>
-                      <span className="text-green-400">₹{(
-                        (employeeData.salaryInfo?.basicSalary || 0) +
-                        (employeeData.salaryInfo?.allowances?.hra || 0) +
-                        (employeeData.salaryInfo?.allowances?.medical || 0) +
-                        (employeeData.salaryInfo?.allowances?.transport || 0) +
-                        (employeeData.salaryInfo?.allowances?.other || 0)
-                      ).toLocaleString()}</span>
-                    </div>
+                ) : !currentPayslip ? (
+                  <div className="text-center py-12">
+                    <FileText className="w-16 h-16 text-secondary-600 mx-auto mb-4" />
+                    <p className="text-secondary-400 text-lg">No payslip generated for current month</p>
+                    <p className="text-secondary-500 text-sm mt-2">Please contact HR for more information</p>
                   </div>
-                </div>
-
-                {/* Deductions */}
-                <div className="bg-secondary-800/50 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-red-400 mb-3">Deductions</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-secondary-400">Provident Fund (PF)</span>
-                      <span className="text-white">₹{(employeeData.salaryInfo?.deductions?.pf || 0).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-secondary-400">ESI</span>
-                      <span className="text-white">₹{(employeeData.salaryInfo?.deductions?.esi || 0).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-secondary-400">Tax</span>
-                      <span className="text-white">₹{(employeeData.salaryInfo?.deductions?.tax || 0).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-secondary-400">Other Deductions</span>
-                      <span className="text-white">₹{(employeeData.salaryInfo?.deductions?.other || 0).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between border-t border-secondary-600 pt-2 font-semibold">
-                      <span className="text-red-400">Total Deductions</span>
-                      <span className="text-red-400">₹{(
-                        (employeeData.salaryInfo?.deductions?.pf || 0) +
-                        (employeeData.salaryInfo?.deductions?.esi || 0) +
-                        (employeeData.salaryInfo?.deductions?.tax || 0) +
-                        (employeeData.salaryInfo?.deductions?.other || 0)
-                      ).toLocaleString()}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Net Salary */}
-                <div className="bg-gradient-to-r from-neon-pink/20 to-neon-purple/20 rounded-lg p-4 border border-neon-pink/30">
-                  <div className="flex justify-between items-center">
-                    <span className="text-lg font-bold text-white">Net Salary</span>
-                    <span className="text-2xl font-bold text-neon-pink">₹{(
-                      (employeeData.salaryInfo?.basicSalary || 0) +
-                      (employeeData.salaryInfo?.allowances?.hra || 0) +
-                      (employeeData.salaryInfo?.allowances?.medical || 0) +
-                      (employeeData.salaryInfo?.allowances?.transport || 0) +
-                      (employeeData.salaryInfo?.allowances?.other || 0) -
-                      (employeeData.salaryInfo?.deductions?.pf || 0) -
-                      (employeeData.salaryInfo?.deductions?.esi || 0) -
-                      (employeeData.salaryInfo?.deductions?.tax || 0) -
-                      (employeeData.salaryInfo?.deductions?.other || 0)
-                    ).toLocaleString()}</span>
-                  </div>
-                </div>
-
-                {/* Bank Details */}
-                {employeeData.bankInfo && (employeeData.bankInfo.accountNumber || employeeData.bankInfo.bankName) && (
-                  <div className="bg-secondary-800/50 rounded-lg p-4">
-                    <h3 className="text-lg font-semibold text-white mb-3">Bank Details</h3>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-secondary-400">Account Holder:</span>
-                        <span className="text-white ml-2">{employeeData.bankInfo?.accountHolderName || 'N/A'}</span>
-                      </div>
-                      <div>
-                        <span className="text-secondary-400">Bank:</span>
-                        <span className="text-white ml-2">{employeeData.bankInfo?.bankName || 'N/A'}</span>
-                      </div>
-                      <div>
-                        <span className="text-secondary-400">Account No:</span>
-                        <span className="text-white ml-2">{employeeData.bankInfo?.accountNumber ? `XXXX${employeeData.bankInfo.accountNumber.slice(-4)}` : 'N/A'}</span>
-                      </div>
-                      <div>
-                        <span className="text-secondary-400">IFSC:</span>
-                        <span className="text-white ml-2">{employeeData.bankInfo?.ifscCode || 'N/A'}</span>
+                ) : (
+                  <>
+                    {/* Employee Info */}
+                    <div className="bg-secondary-800/50 rounded-lg p-4">
+                      <h3 className="text-lg font-semibold text-white mb-3">Employee Details</h3>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-secondary-400">Name:</span>
+                          <span className="text-white ml-2">{currentPayslip.employeeName || 'N/A'}</span>
+                        </div>
+                        <div>
+                          <span className="text-secondary-400">Employee ID:</span>
+                          <span className="text-white ml-2">{currentPayslip.employeeId || 'N/A'}</span>
+                        </div>
+                        <div>
+                          <span className="text-secondary-400">Period:</span>
+                          <span className="text-white ml-2">
+                            {new Date(currentPayslip.period.year, currentPayslip.period.month - 1).toLocaleString('default', { month: 'long', year: 'numeric' })}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-secondary-400">Status:</span>
+                          <span className="text-white ml-2 capitalize">{currentPayslip.status || 'N/A'}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
+
+                    {/* Attendance Info */}
+                    {currentPayslip.attendance && (
+                      <div className="bg-secondary-800/50 rounded-lg p-4">
+                        <h3 className="text-lg font-semibold text-blue-400 mb-3">Attendance Summary</h3>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-secondary-400">Working Days:</span>
+                            <span className="text-white">{currentPayslip.attendance.workingDays || 0}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-secondary-400">Present Days:</span>
+                            <span className="text-white">{currentPayslip.attendance.presentDays || 0}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-secondary-400">Leave Days:</span>
+                            <span className="text-white">{currentPayslip.attendance.leaveDays || 0}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-secondary-400">Absent Days:</span>
+                            <span className="text-white">{currentPayslip.attendance.absentDays || 0}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Earnings */}
+                    <div className="bg-secondary-800/50 rounded-lg p-4">
+                      <h3 className="text-lg font-semibold text-green-400 mb-3">Earnings</h3>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-secondary-400">Basic Salary</span>
+                          <span className="text-white">₹{(currentPayslip.earnings?.basicSalary || 0).toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-secondary-400">HRA</span>
+                          <span className="text-white">₹{(currentPayslip.earnings?.hra || 0).toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-secondary-400">Medical Allowance</span>
+                          <span className="text-white">₹{(currentPayslip.earnings?.medical || 0).toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-secondary-400">Transport Allowance</span>
+                          <span className="text-white">₹{(currentPayslip.earnings?.transport || 0).toLocaleString()}</span>
+                        </div>
+                        {(currentPayslip.earnings?.bonus || 0) > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-secondary-400">Bonus</span>
+                            <span className="text-white">₹{(currentPayslip.earnings?.bonus || 0).toLocaleString()}</span>
+                          </div>
+                        )}
+                        {(currentPayslip.earnings?.overtime || 0) > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-secondary-400">Overtime</span>
+                            <span className="text-white">₹{(currentPayslip.earnings?.overtime || 0).toLocaleString()}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between">
+                          <span className="text-secondary-400">Other Allowances</span>
+                          <span className="text-white">₹{(currentPayslip.earnings?.otherAllowances || 0).toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between border-t border-secondary-600 pt-2 font-semibold">
+                          <span className="text-green-400">Gross Earnings</span>
+                          <span className="text-green-400">₹{(currentPayslip.grossEarnings || 0).toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </>
                 )}
+
+                    {/* Deductions */}
+                    {currentPayslip && (
+                      <>
+                        <div className="bg-secondary-800/50 rounded-lg p-4">
+                          <h3 className="text-lg font-semibold text-red-400 mb-3">Deductions</h3>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-secondary-400">Provident Fund (PF)</span>
+                              <span className="text-white">₹{(currentPayslip.deductions?.pf || 0).toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-secondary-400">ESI</span>
+                              <span className="text-white">₹{(currentPayslip.deductions?.esi || 0).toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-secondary-400">Tax</span>
+                              <span className="text-white">₹{(currentPayslip.deductions?.tax || 0).toLocaleString()}</span>
+                            </div>
+                            {(currentPayslip.deductions?.professionalTax || 0) > 0 && (
+                              <div className="flex justify-between">
+                                <span className="text-secondary-400">Professional Tax</span>
+                                <span className="text-white">₹{(currentPayslip.deductions?.professionalTax || 0).toLocaleString()}</span>
+                              </div>
+                            )}
+                            {(currentPayslip.deductions?.loanDeduction || 0) > 0 && (
+                              <div className="flex justify-between">
+                                <span className="text-secondary-400">Loan Deduction</span>
+                                <span className="text-white">₹{(currentPayslip.deductions?.loanDeduction || 0).toLocaleString()}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between">
+                              <span className="text-secondary-400">Other Deductions</span>
+                              <span className="text-white">₹{(currentPayslip.deductions?.otherDeductions || 0).toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between border-t border-secondary-600 pt-2 font-semibold">
+                              <span className="text-red-400">Total Deductions</span>
+                              <span className="text-red-400">₹{(currentPayslip.totalDeductions || 0).toLocaleString()}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Net Salary */}
+                        <div className="bg-gradient-to-r from-neon-pink/20 to-neon-purple/20 rounded-lg p-4 border border-neon-pink/30">
+                          <div className="flex justify-between items-center">
+                            <span className="text-lg font-bold text-white">Net Salary</span>
+                            <span className="text-2xl font-bold text-neon-pink">₹{(currentPayslip.netSalary || 0).toLocaleString()}</span>
+                          </div>
+                        </div>
+
+                        {/* Bank Info */}
+                        {currentPayslip.bankInfo && (
+                          <div className="bg-secondary-800/50 rounded-lg p-4">
+                            <h3 className="text-lg font-semibold text-white mb-3">Bank Details</h3>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-secondary-400">Bank Name:</span>
+                                <span className="text-white">{currentPayslip.bankInfo.bankName || 'N/A'}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-secondary-400">Account Number:</span>
+                                <span className="text-white">{currentPayslip.bankInfo.accountNumber || 'N/A'}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-secondary-400">IFSC Code:</span>
+                                <span className="text-white">{currentPayslip.bankInfo.ifscCode || 'N/A'}</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Remarks */}
+                        {currentPayslip.remarks && (
+                          <div className="bg-secondary-800/50 rounded-lg p-4">
+                            <h3 className="text-lg font-semibold text-white mb-2">Remarks</h3>
+                            <p className="text-secondary-300 text-sm">{currentPayslip.remarks}</p>
+                          </div>
+                        )}
+                      </>
+                    )}
+
 
                 <p className="text-xs text-secondary-500 text-center">This is a computer generated payslip and does not require a signature.</p>
               </div>

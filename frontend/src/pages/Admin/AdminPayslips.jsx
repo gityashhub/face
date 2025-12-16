@@ -73,7 +73,8 @@ const AdminPayslips = () => {
     try {
       setLoading(true);
       const response = await payslipAPI.getPayslips({ month: filterMonth, year: filterYear });
-      setPayslips(response.data?.payslips || []);
+      console.log('Payslips response:', response.data); // Debug log
+      setPayslips(response.data?.data?.payslips || []); // ✅ Fixed: Correct nested path
     } catch (error) {
       console.error('Error fetching payslips:', error);
       toast.error('Failed to load payslips');
@@ -85,9 +86,10 @@ const AdminPayslips = () => {
   const fetchEmployees = async () => {
     try {
       const response = await employeeAPI.getEmployees({ status: 'Active', limit: 100 });
-      setEmployees(response.data?.employees || []);
+      setEmployees(response.data?.data?.employees || []);
     } catch (error) {
       console.error('Error fetching employees:', error);
+      toast.error('Failed to load employees');
     }
   };
 
@@ -118,7 +120,7 @@ const AdminPayslips = () => {
     }
   };
 
-  const handleGeneratePayslip = async (e) => {
+  const handleGeneratePayslip = async (e, forceRegenerate = false) => {
     e.preventDefault();
     if (!formData.employeeId) {
       toast.error('Please select an employee');
@@ -127,29 +129,73 @@ const AdminPayslips = () => {
 
     try {
       setGenerating(true);
-      const response = await payslipAPI.generatePayslip(formData);
-      toast.success('Payslip generated successfully!');
+      const dataToSend = { ...formData };
+      if (forceRegenerate) {
+        dataToSend.regenerate = true;
+      }
+
+      const response = await payslipAPI.generatePayslip(dataToSend);
+      toast.success(forceRegenerate ? 'Payslip regenerated successfully!' : 'Payslip generated successfully!');
       setShowGenerateModal(false);
       resetForm();
       fetchPayslips();
     } catch (error) {
       console.error('Error generating payslip:', error);
-      toast.error(error.response?.data?.message || 'Failed to generate payslip');
+
+      // Check if error is due to existing payslip
+      if (error.response?.data?.canRegenerate) {
+        const existingPayslip = error.response.data.existingPayslip;
+        const monthName = months[formData.month - 1];
+
+        // Show confirmation dialog
+        const confirmed = window.confirm(
+          `A payslip already exists for this employee for ${monthName} ${formData.year}.\n\n` +
+          `Generated: ${new Date(existingPayslip.generatedAt).toLocaleDateString()}\n` +
+          `Net Salary: ₹${existingPayslip.netSalary?.toLocaleString()}\n\n` +
+          `Do you want to regenerate it? This will delete the existing payslip and create a new one.`
+        );
+
+        if (confirmed) {
+          // Retry with regenerate flag
+          handleGeneratePayslip(e, true);
+        }
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to generate payslip');
+      }
     } finally {
       setGenerating(false);
     }
   };
 
-  const handleBulkGenerate = async () => {
+  const handleBulkGenerate = async (regenerate = false) => {
     try {
       setGenerating(true);
       const response = await payslipAPI.bulkGenerate({
         month: formData.month,
-        year: formData.year
+        year: formData.year,
+        regenerate
       });
-      
-      const results = response.data;
-      toast.success(`Generated ${results.success?.length || 0} payslips. Skipped: ${results.skipped?.length || 0}, Failed: ${results.failed?.length || 0}`);
+
+      const results = response.data.data;
+      const message = response.data.message;
+
+      // Show detailed results
+      if (results.success?.length > 0 || results.regenerated?.length > 0) {
+        toast.success(message);
+      } else if (results.skipped?.length > 0) {
+        const monthName = months[formData.month - 1];
+        const confirmed = window.confirm(
+          `All payslips for ${monthName} ${formData.year} already exist.\n\n` +
+          `${results.skipped.length} employees already have payslips.\n\n` +
+          `Do you want to regenerate all payslips? This will delete existing payslips and create new ones.`
+        );
+
+        if (confirmed) {
+          handleBulkGenerate(true);
+          return;
+        }
+      }
+
       setShowBulkModal(false);
       fetchPayslips();
     } catch (error) {
@@ -163,18 +209,33 @@ const AdminPayslips = () => {
   const handleDownload = async (payslipId) => {
     try {
       const response = await payslipAPI.downloadPayslip(payslipId);
-      const url = window.URL.createObjectURL(new Blob([response]));
+
+      // The response.data is already a Blob when responseType: 'blob' is set
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+
+      // Get payslip details for better filename
+      const payslip = payslips.find(p => p._id === payslipId);
+      const filename = payslip
+        ? `Payslip_${payslip.employeeId}_${payslip.period.month}_${payslip.period.year}.pdf`
+        : `payslip_${payslipId}.pdf`;
+
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `payslip_${payslipId}.pdf`);
+      link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-      toast.success('Payslip downloaded!');
+
+      // Cleanup
+      setTimeout(() => {
+        link.remove();
+        window.URL.revokeObjectURL(url);
+      }, 100);
+
+      toast.success('Payslip downloaded successfully!');
     } catch (error) {
       console.error('Error downloading payslip:', error);
-      toast.error('Failed to download payslip');
+      toast.error(error.response?.data?.message || 'Failed to download payslip');
     }
   };
 

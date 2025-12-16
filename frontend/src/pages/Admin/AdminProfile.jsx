@@ -22,13 +22,13 @@ const AdminProfile = () => {
   const fetchProfile = async () => {
     try {
       setLoading(true);
-      const response = await authAPI.getMyProfile();
+      const response = await authAPI.getProfile();
       if (response.data.success) {
-        const data = response.data.data;
+        const userData = response.data.data.user;
         setProfile({
-          name: data.name || localStorage.getItem('userName') || '',
-          email: data.email || localStorage.getItem('userEmail') || '',
-          phone: data.phone || '',
+          name: userData.name || localStorage.getItem('userName') || '',
+          email: userData.email || localStorage.getItem('userEmail') || '',
+          phone: userData.phone || '',
           department: 'Administration',
           role: 'admin'
         });
@@ -64,8 +64,11 @@ const AdminProfile = () => {
       });
       toast.success('Profile updated successfully');
       localStorage.setItem('userName', profile.name);
+      // Refresh profile data to show updated values
+      await fetchProfile();
     } catch (error) {
-      toast.error('Failed to update profile');
+      console.error('Update profile error:', error);
+      toast.error(error.response?.data?.message || 'Failed to update profile');
     } finally {
       setSaving(false);
     }

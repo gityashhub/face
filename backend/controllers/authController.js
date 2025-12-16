@@ -175,6 +175,7 @@ const getMe = async (req, res) => {
       id: user._id,
       name: user.name,
       email: user.email,
+      phone: user.phone,
       role: user.role,
       employeeId: user.employeeId,
       isActive: user.isActive,
@@ -826,17 +827,18 @@ const getProfile = async (req, res) => {
 
 const updateProfile = async (req, res) => {
   try {
-    const { name, profileImage } = req.body;
+    const { name, phone, profileImage } = req.body;
 
     const user = await User.findByIdAndUpdate(
       req.user.id,
-      { 
+      {
         ...(name && { name }),
+        ...(phone !== undefined && { phone }),
         ...(profileImage && { profileImage })
       },
-      { 
-        new: true, 
-        runValidators: true 
+      {
+        new: true,
+        runValidators: true
       }
     );
 

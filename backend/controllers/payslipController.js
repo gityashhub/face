@@ -140,7 +140,7 @@ export const generatePayslip = async (req, res) => {
       });
     }
 
-    const { employeeId, month, year, earnings, deductions, remarks } = req.body;
+    const { employeeId, month, year, earnings, deductions, remarks, regenerate } = req.body;
 
     if (!employeeId || !month || !year) {
       return res.status(400).json({
@@ -167,10 +167,39 @@ export const generatePayslip = async (req, res) => {
     });
 
     if (existingPayslip) {
-      return res.status(400).json({
-        success: false,
-        message: `Payslip already exists for ${month}/${year}. Delete it first to regenerate.`
-      });
+      // If regenerate flag is true, delete the existing payslip and continue
+      if (regenerate === true) {
+        console.log(`Regenerating payslip for employee ${employee.employeeId} for ${month}/${year}`);
+
+        // Delete the old PDF file if it exists
+        if (existingPayslip.pdfPath) {
+          const oldPdfPath = path.join(process.cwd(), 'temp', 'payslips', existingPayslip.pdfPath);
+          if (fs.existsSync(oldPdfPath)) {
+            try {
+              fs.unlinkSync(oldPdfPath);
+              console.log(`Deleted old PDF: ${existingPayslip.pdfPath}`);
+            } catch (err) {
+              console.error('Error deleting old PDF:', err);
+            }
+          }
+        }
+
+        // Delete the existing payslip from database
+        await Payslip.findByIdAndDelete(existingPayslip._id);
+        console.log(`Deleted existing payslip ID: ${existingPayslip._id}`);
+      } else {
+        // If regenerate flag is not set, return error with regenerate option
+        return res.status(400).json({
+          success: false,
+          message: `Payslip already exists for ${month}/${year}.`,
+          existingPayslip: {
+            id: existingPayslip._id,
+            generatedAt: existingPayslip.createdAt,
+            netSalary: existingPayslip.netSalary
+          },
+          canRegenerate: true
+        });
+      }
     }
 
     const startDate = new Date(year, month - 1, 1);
@@ -519,7 +548,7 @@ export const generateBulkPayslips = async (req, res) => {
       });
     }
 
-    const { month, year, departmentId } = req.body;
+    const { month, year, departmentId, regenerate } = req.body;
 
     if (!month || !year) {
       return res.status(400).json({
@@ -540,7 +569,8 @@ export const generateBulkPayslips = async (req, res) => {
     const results = {
       success: [],
       failed: [],
-      skipped: []
+      skipped: [],
+      regenerated: []
     };
 
     for (const employee of employees) {
@@ -552,12 +582,32 @@ export const generateBulkPayslips = async (req, res) => {
         });
 
         if (existing) {
-          results.skipped.push({
-            employeeId: employee.employeeId,
-            name: `${employee.personalInfo.firstName} ${employee.personalInfo.lastName}`,
-            reason: 'Payslip already exists'
-          });
-          continue;
+          if (regenerate === true) {
+            // Delete existing payslip and regenerate
+            console.log(`Regenerating payslip for employee ${employee.employeeId}`);
+
+            // Delete old PDF
+            if (existing.pdfPath) {
+              const oldPdfPath = path.join(process.cwd(), 'temp', 'payslips', existing.pdfPath);
+              if (fs.existsSync(oldPdfPath)) {
+                try {
+                  fs.unlinkSync(oldPdfPath);
+                } catch (err) {
+                  console.error('Error deleting old PDF:', err);
+                }
+              }
+            }
+
+            await Payslip.findByIdAndDelete(existing._id);
+            // Continue to generate new payslip below
+          } else {
+            results.skipped.push({
+              employeeId: employee.employeeId,
+              name: `${employee.personalInfo.firstName} ${employee.personalInfo.lastName}`,
+              reason: 'Payslip already exists'
+            });
+            continue;
+          }
         }
 
         const startDate = new Date(year, month - 1, 1);
@@ -622,11 +672,17 @@ export const generateBulkPayslips = async (req, res) => {
           console.error('PDF generation error for', employee.employeeId, pdfError);
         }
 
-        results.success.push({
+        const payslipInfo = {
           employeeId: employee.employeeId,
           name: `${employee.personalInfo.firstName} ${employee.personalInfo.lastName}`,
           netSalary: payslip.netSalary
-        });
+        };
+
+        if (existing && regenerate) {
+          results.regenerated.push(payslipInfo);
+        } else {
+          results.success.push(payslipInfo);
+        }
 
       } catch (error) {
         results.failed.push({
@@ -637,9 +693,21 @@ export const generateBulkPayslips = async (req, res) => {
       }
     }
 
+    const totalGenerated = results.success.length + results.regenerated.length;
+    let message = `Generated ${results.success.length} new payslips`;
+    if (results.regenerated.length > 0) {
+      message += `, regenerated ${results.regenerated.length} payslips`;
+    }
+    if (results.skipped.length > 0) {
+      message += `, skipped ${results.skipped.length} existing payslips`;
+    }
+    if (results.failed.length > 0) {
+      message += `, ${results.failed.length} failed`;
+    }
+
     res.json({
       success: true,
-      message: `Generated ${results.success.length} payslips`,
+      message,
       data: results
     });
 

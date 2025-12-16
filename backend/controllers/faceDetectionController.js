@@ -295,15 +295,21 @@ export const verifyVideoFace = async (req, res) => {
     const { frames, location } = req.body;
 
     if (!frames || !Array.isArray(frames) || frames.length < 3) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'At least 3 video frames are required for verification' 
+      return res.status(400).json({
+        success: false,
+        message: 'At least 3 video frames are required for verification'
       });
     }
 
-    const userLocation = (location && location.latitude !== undefined && location.longitude !== undefined)
-      ? location
-      : { latitude: 22.29867, longitude: 73.13130 };
+    // Validate location data is provided
+    if (!location || location.latitude === undefined || location.longitude === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'Location data is required for attendance verification'
+      });
+    }
+
+    const userLocation = location;
 
     const employee = await Employee.findOne({ user: req.user.id });
     if (!employee) {
@@ -370,7 +376,7 @@ export const verifyVideoFace = async (req, res) => {
     const OFFICE_LOCATION = {
       latitude: 22.29867,
       longitude: 73.13130,
-      radius: 999999
+      radius: 100 // meters - Strict office location enforcement
     };
 
     const distance = calculateGeoDistance(
@@ -574,7 +580,7 @@ export const getEmployeeFace = async (req, res) => {
 export const verifyFaceAttendance = async (req, res) => {
   try {
     console.log('📸 Face attendance verification started for user:', req.user.email);
-    const { location } = req.body;
+    let location = req.body.location;
 
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'Face image is required' });
@@ -582,9 +588,29 @@ export const verifyFaceAttendance = async (req, res) => {
 
     console.log('Image received, size:', req.file.size, 'bytes');
 
-    const userLocation = (location && location.latitude !== undefined && location.longitude !== undefined)
-      ? location
-      : { latitude: 22.29867, longitude: 73.13130 };
+    // Parse location if it's a JSON string (from FormData)
+    if (typeof location === 'string') {
+      try {
+        location = JSON.parse(location);
+      } catch (e) {
+        try { await fs.unlink(req.file.path); } catch (_) {}
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid location data format'
+        });
+      }
+    }
+
+    // Validate location data is provided
+    if (!location || location.latitude === undefined || location.longitude === undefined) {
+      try { await fs.unlink(req.file.path); } catch (_) {}
+      return res.status(400).json({
+        success: false,
+        message: 'Location data is required for attendance verification'
+      });
+    }
+
+    const userLocation = location;
 
     const employee = await Employee.findOne({ user: req.user.id });
     if (!employee) {
@@ -666,7 +692,7 @@ export const verifyFaceAttendance = async (req, res) => {
     const OFFICE_LOCATION = {
       latitude: 22.29867,
       longitude: 73.13130,
-      radius: 999999
+      radius: 100 // meters - Strict office location enforcement
     };
 
     const distance = calculateGeoDistance(
@@ -947,15 +973,21 @@ export const verifyLiveVideo = async (req, res) => {
     const { frames, location } = req.body;
 
     if (!frames || !Array.isArray(frames) || frames.length < 5) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'At least 5 video frames are required for live verification' 
+      return res.status(400).json({
+        success: false,
+        message: 'At least 5 video frames are required for live verification'
       });
     }
 
-    const userLocation = (location && location.latitude !== undefined && location.longitude !== undefined)
-      ? location
-      : { latitude: 22.29867, longitude: 73.13130 };
+    // Validate location data is provided
+    if (!location || location.latitude === undefined || location.longitude === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'Location data is required for attendance verification'
+      });
+    }
+
+    const userLocation = location;
 
     const employee = await Employee.findOne({ user: req.user.id });
     if (!employee) {
@@ -1020,7 +1052,7 @@ export const verifyLiveVideo = async (req, res) => {
     const OFFICE_LOCATION = {
       latitude: 22.29867,
       longitude: 73.13130,
-      radius: 999999
+      radius: 100 // meters - Strict office location enforcement
     };
 
     const distance = calculateGeoDistance(

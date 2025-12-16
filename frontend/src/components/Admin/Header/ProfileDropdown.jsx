@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { User, Settings, LogOut, Shield, Calendar, Clock } from "lucide-react";
+import { User, LogOut, Shield, Clock } from "lucide-react";
 
 const ProfileDropdown = ({ onLogout, userProfile, onClose }) => {
   useEffect(() => {
@@ -71,9 +71,9 @@ const ProfileDropdown = ({ onLogout, userProfile, onClose }) => {
           className="flex items-center px-4 py-2.5 text-sm text-secondary-300 hover:text-white hover:bg-secondary-700/50 transition-colors"
         >
           <User className="w-4 h-4 mr-3" />
-          Profile Settings
+          {isAdmin ? 'Profile Settings' : 'Profile Information'}
         </Link>
-        
+
         {isAdmin && (
           <Link
             to="/admin/employees"
@@ -85,38 +85,19 @@ const ProfileDropdown = ({ onLogout, userProfile, onClose }) => {
           </Link>
         )}
 
-        <Link
-          to={isAdmin ? '/admin/settings' : '/employee/settings'}
-          onClick={onClose}
-          className="flex items-center px-4 py-2.5 text-sm text-secondary-300 hover:text-white hover:bg-secondary-700/50 transition-colors"
-        >
-          <Settings className="w-4 h-4 mr-3" />
-          Settings
-        </Link>
-
         {!isAdmin && (
-          <>
-            <Link
-              to="/employee/attendance"
-              onClick={onClose}
-              className="flex items-center px-4 py-2.5 text-sm text-secondary-300 hover:text-white hover:bg-secondary-700/50 transition-colors"
-            >
-              <Clock className="w-4 h-4 mr-3" />
-              My Attendance
-            </Link>
-            <Link
-              to="/employee/leaves"
-              onClick={onClose}
-              className="flex items-center px-4 py-2.5 text-sm text-secondary-300 hover:text-white hover:bg-secondary-700/50 transition-colors"
-            >
-              <Calendar className="w-4 h-4 mr-3" />
-              My Leaves
-            </Link>
-          </>
+          <Link
+            to="/employee/attendance"
+            onClick={onClose}
+            className="flex items-center px-4 py-2.5 text-sm text-secondary-300 hover:text-white hover:bg-secondary-700/50 transition-colors"
+          >
+            <Clock className="w-4 h-4 mr-3" />
+            My Attendance
+          </Link>
         )}
 
         <hr className="my-2 border-secondary-600" />
-        
+
         <button
           onClick={() => {
             onClose();

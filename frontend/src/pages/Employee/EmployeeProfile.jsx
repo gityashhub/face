@@ -24,17 +24,19 @@ const EmployeeProfile = () => {
   const fetchProfile = async () => {
     try {
       setLoading(true);
-      const response = await authAPI.getMyProfile();
+      const response = await authAPI.getProfile();
       if (response.data.success) {
-        const data = response.data.data;
+        const userData = response.data.data.user;
+        const employeeData = response.data.data.employee;
+
         setProfile({
-          name: data.name || data.personalInfo?.firstName + ' ' + data.personalInfo?.lastName || localStorage.getItem('userName') || '',
-          email: data.email || data.contactInfo?.personalEmail || localStorage.getItem('userEmail') || '',
-          phone: data.phone || data.contactInfo?.phone || '',
-          department: data.workInfo?.department || localStorage.getItem('userDepartment') || '',
-          position: data.workInfo?.position || '',
-          employeeId: data.employeeId || localStorage.getItem('employeeId') || '',
-          joiningDate: data.workInfo?.joiningDate || ''
+          name: userData.name || (employeeData?.personalInfo ? `${employeeData.personalInfo.firstName} ${employeeData.personalInfo.lastName}` : '') || localStorage.getItem('userName') || '',
+          email: userData.email || employeeData?.contactInfo?.personalEmail || localStorage.getItem('userEmail') || '',
+          phone: userData.phone || employeeData?.contactInfo?.phone || '',
+          department: employeeData?.workInfo?.department?.name || localStorage.getItem('userDepartment') || '',
+          position: employeeData?.workInfo?.position || '',
+          employeeId: userData.employeeId || employeeData?.employeeId || localStorage.getItem('employeeId') || '',
+          joiningDate: employeeData?.workInfo?.joiningDate || ''
         });
       }
     } catch (error) {
@@ -65,11 +67,16 @@ const EmployeeProfile = () => {
     setSaving(true);
     try {
       await authAPI.updateProfile({
+        name: profile.name,
         phone: profile.phone
       });
       toast.success('Profile updated successfully');
+      localStorage.setItem('userName', profile.name);
+      // Refresh profile data to show updated values
+      await fetchProfile();
     } catch (error) {
-      toast.error('Failed to update profile');
+      console.error('Update profile error:', error);
+      toast.error(error.response?.data?.message || 'Failed to update profile');
     } finally {
       setSaving(false);
     }

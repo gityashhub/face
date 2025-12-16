@@ -3,9 +3,9 @@ import API from './api';
 
 // Office location constant - Make sure this matches your controller
 export const OFFICE_LOCATION = {
-  latitude: 22.29269924053806,  // Updated to match controller
-  longitude: 73.12228427139301, // Updated to match controller
-  radius: 999999 // meters - TEMPORARILY INCREASED FOR TESTING (was 1500)
+  latitude: 22.29867,
+  longitude: 73.13130,
+  radius: 100 // meters - Strict office location enforcement
 };
 
 // Geolocation utility functions

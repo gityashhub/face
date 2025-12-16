@@ -7,7 +7,6 @@ import {
   Calendar,
   Clock,
   FileText,
-  Settings,
   Bell,
   LogOut,
   ChevronDown,
@@ -20,12 +19,15 @@ import {
   TrendingUp,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { authAPI } from '../../../utils/api';
 
 const EmployeeLayout = ({ children, employeeData }) => {
   // 👈 Accept prop
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileDropdown, setProfileDropdown] = useState(false);
   const [notificationDropdown, setNotificationDropdown] = useState(false);
+  const [fetchedEmployeeData, setFetchedEmployeeData] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [notifications, setNotifications] = useState([
     {
       id: 1,
@@ -51,6 +53,72 @@ const EmployeeLayout = ({ children, employeeData }) => {
   const navigate = useNavigate();
   const notificationRef = useRef(null);
   const profileRef = useRef(null);
+
+  // Fetch employee data on mount if not provided via props
+  useEffect(() => {
+    const fetchEmployeeData = async () => {
+      // If employeeData is already provided via props, don't fetch
+      if (employeeData) {
+        setFetchedEmployeeData(employeeData);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const response = await authAPI.getProfile();
+
+        if (response.data.success) {
+          const userData = response.data.data.user;
+          const employeeDataFromAPI = response.data.data.employee;
+
+          // Combine user and employee data
+          const combinedData = {
+            personalInfo: {
+              firstName: employeeDataFromAPI?.personalInfo?.firstName || userData.name?.split(' ')[0] || 'Unknown',
+              lastName: employeeDataFromAPI?.personalInfo?.lastName || userData.name?.split(' ')[1] || 'User',
+            },
+            workInfo: {
+              position: employeeDataFromAPI?.workInfo?.position || 'Employee',
+              department: employeeDataFromAPI?.workInfo?.department?.name || 'N/A',
+            },
+            employeeId: userData.employeeId || employeeDataFromAPI?.employeeId || 'N/A',
+            contactInfo: {
+              personalEmail: userData.email || employeeDataFromAPI?.contactInfo?.personalEmail || localStorage.getItem("userEmail") || 'user@company.com',
+            },
+            user: userData,
+          };
+
+          setFetchedEmployeeData(combinedData);
+
+          // Update localStorage with fresh data
+          if (userData.name) localStorage.setItem('userName', userData.name);
+          if (userData.email) localStorage.setItem('userEmail', userData.email);
+          if (userData.employeeId) localStorage.setItem('employeeId', userData.employeeId);
+        }
+      } catch (error) {
+        console.error('Error fetching employee data in layout:', error);
+        // Set fallback data from localStorage
+        setFetchedEmployeeData({
+          personalInfo: {
+            firstName: localStorage.getItem('userName')?.split(' ')[0] || 'Unknown',
+            lastName: localStorage.getItem('userName')?.split(' ')[1] || 'User',
+          },
+          workInfo: {
+            position: 'Employee',
+            department: localStorage.getItem('userDepartment') || 'N/A',
+          },
+          employeeId: localStorage.getItem('employeeId') || 'N/A',
+          contactInfo: {
+            personalEmail: localStorage.getItem("userEmail") || 'user@company.com',
+          },
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEmployeeData();
+  }, [employeeData]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -78,8 +146,9 @@ const sidebarItems = [
   { name: "Problem Statement", icon: AlertCircle, path: "/employee/problems" },
   { name: "Sales", icon: TrendingUp, path: "/employee/sales" },
 ];
-  // Use passed employeeData or fallback
-  const emp = employeeData || {
+
+  // Use fetched data, passed employeeData prop, or fallback
+  const emp = fetchedEmployeeData || employeeData || {
     personalInfo: { firstName: "Unknown", lastName: "User" },
     workInfo: { position: "Employee", department: "N/A" },
     employeeId: "N/A",
@@ -326,14 +395,6 @@ const sidebarItems = [
                       >
                         <User className="w-4 h-4 mr-3" />
                         Profile Information
-                      </Link>
-                      <Link
-                        to="/employee/settings"
-                        className="flex items-center px-4 py-2 text-sm text-secondary-300 hover:text-white hover:bg-secondary-700/50"
-                        onClick={() => setProfileDropdown(false)}
-                      >
-                        <Settings className="w-4 h-4 mr-3" />
-                        Settings
                       </Link>
                       <Link
                         to="/employee/attendance"
