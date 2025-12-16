@@ -2,8 +2,9 @@
 import React, { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import EmployeeLayout from '../../components/Employee/EmployeeLayout/EmployeeLayout';
 import {
-  User, Clock, Calendar, DollarSign, CheckCircle, AlertCircle, MapPin, Bell, Award, Target, TrendingUp, FileText, MessageCircle, X, Send, Bot, Camera, Download
+  User, Clock, Calendar, DollarSign, CheckCircle, AlertCircle, MapPin, Bell, Award, Target, TrendingUp, FileText, MessageCircle, X, Send, Bot, Camera, Download, Users
 } from 'lucide-react';
+import GroupChatModal from '../../components/Employee/GroupChat/GroupChatModal';
 import toast from 'react-hot-toast';
 import { employeeAPI, authAPI, attendanceAPI, payslipAPI } from '../../utils/api';
 import API from '../../utils/api';
@@ -24,6 +25,7 @@ const EmployeeDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [showChatModal, setShowChatModal] = useState(false);
   const [showBotModal, setShowBotModal] = useState(false);
+  const [showGroupChatModal, setShowGroupChatModal] = useState(false);
   const [showPayslipModal, setShowPayslipModal] = useState(false);
   const [currentPayslip, setCurrentPayslip] = useState(null);
   const [payslipLoading, setPayslipLoading] = useState(false);
@@ -874,7 +876,7 @@ const EmployeeDashboard = () => {
 
         <div className="glass-morphism neon-border rounded-2xl p-6">
           <h2 className="text-xl font-bold text-white mb-6">Quick Actions</h2>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
             <button 
               onClick={() => window.location.href = '/employee/attendance'}
               className="p-4 rounded-lg border-2 border-dashed border-secondary-600 hover:border-neon-pink/50 hover:bg-neon-pink/5 group"
@@ -901,6 +903,13 @@ const EmployeeDashboard = () => {
             >
               <MessageCircle className="w-8 h-8 text-secondary-400 group-hover:text-neon-purple mx-auto mb-2" />
               <p className="text-sm text-secondary-400 group-hover:text-white">Chat with Team</p>
+            </button>
+            <button 
+              onClick={() => setShowGroupChatModal(true)}
+              className="p-4 rounded-lg border-2 border-dashed border-secondary-600 hover:border-green-500/50 hover:bg-green-500/5 group"
+            >
+              <Users className="w-8 h-8 text-secondary-400 group-hover:text-green-400 mx-auto mb-2" />
+              <p className="text-sm text-secondary-400 group-hover:text-white">Group Chats</p>
             </button>
             <button 
               onClick={() => setShowBotModal(true)}
@@ -1370,6 +1379,15 @@ const EmployeeDashboard = () => {
             </div>
           </div>
         )}
+
+        {/* Group Chat Modal */}
+        <GroupChatModal
+          isOpen={showGroupChatModal}
+          onClose={() => setShowGroupChatModal(false)}
+          socket={socketRef.current}
+          employeeData={employeeData}
+          onlineUsers={onlineUsers}
+        />
       </div>
     </EmployeeLayout>
   );

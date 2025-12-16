@@ -34,6 +34,7 @@ import aiRoutes from './routes/aiRoutes.js';
 import purchaseRoutes from './routes/purchaseRoutes.js';
 import faceDetectionRoutes from './routes/faceDetectionRoutes.js';
 import payslipRoutes from './routes/payslipRoutes.js';
+import groupRoutes from './routes/groupRoutes.js';
 
 // import { createAdminIfNotExists } from './controllers/initAdmin.js';
 
@@ -85,6 +86,7 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/purchase', purchaseRoutes);
 app.use('/api/face-detection', faceDetectionRoutes);
 app.use('/api/payslips', payslipRoutes);
+app.use('/api/groups', groupRoutes);
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.status(200).json({

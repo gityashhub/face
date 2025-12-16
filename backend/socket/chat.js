@@ -1,6 +1,8 @@
 // backend/socket/chat.js
 import User from '../models/User.js';
 import Message from '../models/Message.js';
+import Group from '../models/Group.js';
+import GroupMessage from '../models/GroupMessage.js';
 import { processBotMessage } from '../controllers/botController.js';
 import authSocket from '../middleware/authSocket.js';
 
@@ -33,7 +35,7 @@ const setupChatSocket = (io) => {
   const employeeNamespace = io.of('/employee');
   employeeNamespace.use(authSocket);
 
-  employeeNamespace.on('connection', (socket) => {
+  employeeNamespace.on('connection', async (socket) => {
     const userId = socket.user._id.toString();
     const userName = socket.user.fullName;
     
@@ -54,6 +56,20 @@ const setupChatSocket = (io) => {
       name: userName,
       lastSeen: new Date()
     });
+
+    try {
+      const userGroups = await Group.find({
+        'members.user': userId,
+        isActive: true
+      }).select('_id');
+      
+      userGroups.forEach(group => {
+        socket.join(`group:${group._id}`);
+      });
+      console.log(`User ${userName} joined ${userGroups.length} group rooms`);
+    } catch (err) {
+      console.error('Error joining group rooms:', err);
+    }
 
     socket.emit('presence:sync', { onlineUsers: getOnlineUserIds() });
     
@@ -164,6 +180,157 @@ const setupChatSocket = (io) => {
         console.error('Socket message error:', err);
         processedMessages.delete(dedupKey);
         socket.emit('error', { type: 'MESSAGE_FAILED', message: 'Failed to send message' });
+      }
+    });
+
+    socket.on('group:message', async (payload) => {
+      const { groupId, text, clientMessageId } = payload;
+      
+      if (!groupId || !text || typeof text !== 'string' || !text.trim()) {
+        socket.emit('error', { type: 'INVALID_PAYLOAD', message: 'Group message requires groupId and text' });
+        return;
+      }
+
+      const sanitizedText = text.trim().substring(0, 5000);
+      const dedupKey = clientMessageId || `group-${groupId}-${userId}-${sanitizedText.substring(0, 50)}-${Math.floor(Date.now() / 1000)}`;
+      if (processedMessages.has(dedupKey)) {
+        return;
+      }
+      processedMessages.set(dedupKey, Date.now());
+
+      try {
+        const group = await Group.findById(groupId);
+        if (!group) {
+          socket.emit('error', { type: 'GROUP_NOT_FOUND', message: 'Group not found' });
+          processedMessages.delete(dedupKey);
+          return;
+        }
+
+        if (!group.isMember(userId)) {
+          socket.emit('error', { type: 'NOT_A_MEMBER', message: 'You are not a member of this group' });
+          processedMessages.delete(dedupKey);
+          return;
+        }
+
+        if (!group.canSendMessage(userId)) {
+          socket.emit('error', { type: 'PERMISSION_DENIED', message: 'You cannot send messages in this group' });
+          processedMessages.delete(dedupKey);
+          return;
+        }
+
+        const messageDoc = new GroupMessage({
+          group: groupId,
+          sender: userId,
+          text: sanitizedText
+        });
+        await messageDoc.save();
+        await messageDoc.populate('sender', 'name email profileImage');
+
+        group.lastMessage = {
+          text: sanitizedText.substring(0, 100),
+          sender: userId,
+          timestamp: new Date()
+        };
+        await group.save();
+
+        const messagePayload = {
+          _id: messageDoc._id,
+          clientMessageId,
+          groupId,
+          sender: {
+            _id: userId,
+            name: userName,
+            profileImage: socket.user.profileImage || null
+          },
+          text: messageDoc.text,
+          timestamp: messageDoc.createdAt,
+          type: 'text'
+        };
+
+        io.of('/employee').to(`group:${groupId}`).emit('group:message', messagePayload);
+
+      } catch (err) {
+        console.error('Group message error:', err);
+        processedMessages.delete(dedupKey);
+        socket.emit('error', { type: 'MESSAGE_FAILED', message: 'Failed to send group message' });
+      }
+    });
+
+    socket.on('group:join', async (data) => {
+      const { groupId } = data;
+      if (!groupId) return;
+      try {
+        const group = await Group.findById(groupId).select('members');
+        if (!group) {
+          socket.emit('error', { type: 'GROUP_NOT_FOUND', message: 'Group not found' });
+          return;
+        }
+        if (!group.isMember(userId)) {
+          socket.emit('error', { type: 'NOT_A_MEMBER', message: 'You are not a member of this group' });
+          return;
+        }
+        socket.join(`group:${groupId}`);
+        console.log(`User ${userName} joined group room: ${groupId}`);
+      } catch (err) {
+        console.error('Error joining group room:', err);
+        socket.emit('error', { type: 'JOIN_FAILED', message: 'Failed to join group' });
+      }
+    });
+
+    socket.on('group:leave', (data) => {
+      const { groupId } = data;
+      socket.leave(`group:${groupId}`);
+      console.log(`User ${userName} left group room: ${groupId}`);
+    });
+
+    socket.on('group:typing:start', (data) => {
+      const { groupId } = data;
+      if (groupId) {
+        socket.to(`group:${groupId}`).emit('group:typing:start', {
+          groupId,
+          userId,
+          userName
+        });
+      }
+    });
+
+    socket.on('group:typing:stop', (data) => {
+      const { groupId } = data;
+      if (groupId) {
+        socket.to(`group:${groupId}`).emit('group:typing:stop', {
+          groupId,
+          userId
+        });
+      }
+    });
+
+    socket.on('group:member:added', async (data) => {
+      const { groupId, memberIds } = data;
+      if (!groupId || !memberIds) return;
+
+      memberIds.forEach(memberId => {
+        const memberSocketId = userSockets.get(memberId);
+        if (memberSocketId) {
+          const memberSocket = employeeNamespace.sockets.get(memberSocketId);
+          if (memberSocket) {
+            memberSocket.join(`group:${groupId}`);
+            memberSocket.emit('group:added', { groupId });
+          }
+        }
+      });
+    });
+
+    socket.on('group:member:removed', async (data) => {
+      const { groupId, memberId } = data;
+      if (!groupId || !memberId) return;
+
+      const memberSocketId = userSockets.get(memberId);
+      if (memberSocketId) {
+        const memberSocket = employeeNamespace.sockets.get(memberSocketId);
+        if (memberSocket) {
+          memberSocket.leave(`group:${groupId}`);
+          memberSocket.emit('group:removed', { groupId });
+        }
       }
     });
 
