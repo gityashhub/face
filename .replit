@@ -32,7 +32,6 @@ outputType = "console"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd backend && node server.js"
-waitForPort = 3001
 
 [[workflows.workflow]]
 name = "Frontend"
@@ -51,11 +50,11 @@ localPort = 3001
 externalPort = 3001
 
 [[ports]]
-localPort = 5001
+localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 5000
+localPort = 5001
 externalPort = 80
 
 [deployment]
