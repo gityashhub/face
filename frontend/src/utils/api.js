@@ -3,8 +3,10 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 
 // Create axios instance with base URL
+const BASE_URL = import.meta.env.VITE_API_URL || '/api';
+
 const API = axios.create({
-  baseURL: '/api',
+  baseURL: BASE_URL,
   headers: {
     'Content-Type': 'application/json'
   },
