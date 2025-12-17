@@ -69,7 +69,6 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
 
 // Body parsing middleware - MUST BE BEFORE ROUTES
 app.use(express.json({ limit: '10mb' }));
@@ -120,7 +119,7 @@ if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../frontend/dist')));
   
   // Handle React routing, return all requests to React app
-  app.get('*', (req, res) => {
+  app.get('/{*splat}', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
   });
 } else {
