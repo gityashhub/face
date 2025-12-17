@@ -155,6 +155,16 @@ const EmployeeLayout = ({ children, employeeData }) => {
             departmentValue = 'N/A';
           }
 
+          // Determine the final department value to use
+          // NEVER downgrade from a valid localStorage value to 'N/A'
+          let finalDepartmentValue = departmentValue;
+          if (!departmentValue || departmentValue === 'N/A') {
+            const storedDept = localStorage.getItem('userDepartment');
+            if (storedDept && storedDept !== 'N/A') {
+              finalDepartmentValue = storedDept;
+            }
+          }
+
           // Combine user and employee data
           const combinedData = {
             personalInfo: {
@@ -163,7 +173,7 @@ const EmployeeLayout = ({ children, employeeData }) => {
             },
             workInfo: {
               position: employeeDataFromAPI?.workInfo?.position || 'Employee',
-              department: departmentValue,
+              department: finalDepartmentValue,
             },
             employeeId: userData.employeeId || employeeDataFromAPI?.employeeId || 'N/A',
             contactInfo: {
@@ -172,14 +182,15 @@ const EmployeeLayout = ({ children, employeeData }) => {
             user: userData,
           };
 
-          setFetchedEmployeeData(combinedData);
-          
-          // Update stable department ref and state - this ensures sidebar doesn't reset
-          if (departmentValue && departmentValue !== 'N/A') {
-            stableDepartmentRef.current = departmentValue;
-            setStableDepartment(departmentValue);
-            localStorage.setItem('userDepartment', departmentValue);
+          // Update stable department FIRST before setting employee data
+          // This ensures sidebar has the right department when it re-renders
+          if (finalDepartmentValue && finalDepartmentValue !== 'N/A') {
+            stableDepartmentRef.current = finalDepartmentValue;
+            setStableDepartment(finalDepartmentValue);
+            localStorage.setItem('userDepartment', finalDepartmentValue);
           }
+          
+          setFetchedEmployeeData(combinedData);
 
           // Update localStorage with fresh data
           if (userData.name) localStorage.setItem('userName', userData.name);
