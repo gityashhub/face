@@ -345,332 +345,6 @@ const handleAddTask = async (e) => {
     );
   }
 
-  const TaskModal = ({ isEdit = false, isView = false }) => (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-0 sm:p-2 md:p-4">
-      {/* Enhanced backdrop with blur */}
-      <div className="fixed inset-0 bg-black/70 backdrop-blur-md" onClick={() => {
-        if (isView) setShowViewModal(false);
-        else if (isEdit) setShowEditModal(false);
-        else setShowAddModal(false);
-      }} />
-
-      {/* Modal content */}
-      <div className="relative glass-morphism neon-border rounded-2xl p-1 sm:p-3 md:p-4 lg:p-6 w-full sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-2xl max-h-[85vh] overflow-auto shadow-2xl">
-        <div className="flex items-center justify-between mb-4 sm:mb-6">
-          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white">
-            {isView ? 'Task Details' : isEdit ? 'Edit Task' : 'Create New Task'}
-          </h2>
-          <button 
-            onClick={() => {
-              if (isView) setShowViewModal(false);
-              else if (isEdit) setShowEditModal(false);
-              else setShowAddModal(false);
-            }}
-            className="text-secondary-400 hover:text-white"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        {modalLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-neon-pink" />
-          </div>
-        ) : isView ? (
-          // View Mode
-          <div className="space-y-6">
-            <div className="flex items-center justify-between p-4 bg-secondary-800/30 rounded-lg">
-              <div>
-                <h3 className="text-xl font-bold text-white">{selectedTask.title}</h3>
-                <p className="text-neon-pink">{selectedTask.project}</p>
-              </div>
-              <span className={`px-3 py-1 text-sm rounded-full ${getStatusColor(selectedTask.status)}`}>
-                {selectedTask.status}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm text-secondary-400">Assigned To</label>
-                  <p className="text-white font-medium">
-                    {selectedTask.assignedTo?.user?.name || selectedTask.assignedTo?.fullName || 'Unknown Employee'}
-                  </p>
-                  <p className="text-secondary-400 text-sm">
-                    {selectedTask.assignedTo?.user?.employeeId || selectedTask.assignedTo?.employeeId || 'N/A'}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm text-secondary-400">Priority</label>
-                  <span className={`inline-block px-2 py-1 text-xs rounded-full ${getPriorityColor(selectedTask.priority)}`}>
-                    {selectedTask.priority}
-                  </span>
-                </div>
-                <div>
-                  <label className="text-sm text-secondary-400">Category</label>
-                  <p className="text-white font-medium">{selectedTask.category}</p>
-                </div>
-                <div>
-                  <label className="text-sm text-secondary-400">Created</label>
-                  <p className="text-white font-medium">{formatDate(selectedTask.createdAt)}</p>
-                </div>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm text-secondary-400">Due Date</label>
-                  <p className={`font-medium ${isOverdue(selectedTask.dueDate, selectedTask.status) ? 'text-red-400' : 'text-white'}`}>
-                    {formatDate(selectedTask.dueDate)}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm text-secondary-400">Progress</label>
-                  <div className="flex items-center space-x-2">
-                    <div className="flex-1 bg-secondary-700 rounded-full h-2">
-                      <div 
-                        className="bg-gradient-to-r from-neon-pink to-neon-purple h-2 rounded-full"
-                        style={{ width: `${selectedTask.progress}%` }}
-                      ></div>
-                    </div>
-                    <span className="text-neon-pink text-sm">{selectedTask.progress}%</span>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm text-secondary-400">Hours</label>
-                  <p className="text-white font-medium">
-                    {Math.round(selectedTask.actualHours || 0)} / {selectedTask.estimatedHours || 0} hrs
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm text-secondary-400">Last Updated</label>
-                  <p className="text-white font-medium">{formatDate(selectedTask.updatedAt)}</p>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label className="text-sm text-secondary-400">Description</label>
-              <p className="text-white bg-secondary-800/30 p-3 rounded-lg mt-1">{selectedTask.description}</p>
-            </div>
-
-            {selectedTask.comments && selectedTask.comments.length > 0 && (
-              <div>
-                <label className="text-sm text-secondary-400">Recent Comments ({selectedTask.comments.length})</label>
-                <div className="space-y-2 mt-2 max-h-40 overflow-y-auto">
-                  {selectedTask.comments.slice(-3).map((comment) => (
-                    <div key={comment._id} className="bg-secondary-800/30 p-3 rounded-lg">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <span className="text-white text-sm font-medium">
-                          {comment.user?.name || 'Unknown'}
-                        </span>
-                        <span className="text-secondary-400 text-xs">
-                          {formatDate(comment.createdAt)}
-                        </span>
-                      </div>
-                      <p className="text-secondary-300 text-sm">{comment.text}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          // Add/Edit Form
-          <form onSubmit={isEdit ? handleEditTask : handleAddTask} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-secondary-300 mb-2">Title</label>
-                <input
-                  type="text"
-                  value={isEdit ? selectedTask?.title || '' : newTask.title}
-                  onChange={(e) => {
-                    if (isEdit) {
-                      setSelectedTask({...selectedTask, title: e.target.value});
-                    } else {
-                      setNewTask({...newTask, title: e.target.value});
-                    }
-                  }}
-                  className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-secondary-300 mb-2">Project</label>
-                <select
-                  value={isEdit ? selectedTask?.project || '' : newTask.project}
-                  onChange={(e) => {
-                    if (isEdit) {
-                      setSelectedTask({...selectedTask, project: e.target.value});
-                    } else {
-                      setNewTask({...newTask, project: e.target.value});
-                    }
-                  }}
-                  className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
-                  required
-                >
-                  <option value="">Select Project</option>
-                  {projects.map(project => (
-                    <option key={project} value={project}>{project}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-secondary-300 mb-2">Description</label>
-              <textarea
-                value={isEdit ? selectedTask?.description || '' : newTask.description}
-                onChange={(e) => {
-                  if (isEdit) {
-                    setSelectedTask({...selectedTask, description: e.target.value});
-                  } else {
-                    setNewTask({...newTask, description: e.target.value});
-                  }
-                }}
-                rows="3"
-                className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
-                required
-              ></textarea>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-secondary-300 mb-2">Assign To</label>
-                {employeesLoading ? (
-                  <div className="flex items-center space-x-2 px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg">
-                    <Loader2 className="w-4 h-4 animate-spin text-neon-pink" />
-                    <span className="text-secondary-400">Loading employees...</span>
-                  </div>
-                ) : (
-                  <select
-                    value={isEdit ? selectedTask?.assignedTo?._id || '' : newTask.assignedTo}
-                    onChange={(e) => {
-                      if (isEdit) {
-                        const employee = employees.find(emp => emp._id === e.target.value);
-                        setSelectedTask({...selectedTask, assignedTo: employee});
-                      } else {
-                        setNewTask({...newTask, assignedTo: e.target.value});
-                      }
-                    }}
-                    className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
-                    required
-                  >
-                    <option value="">Select Employee</option>
-                    {(getAssignableEmployees(isEdit ? selectedTask?.category : newTask.category)).map(emp => (
-                      <option key={emp._id} value={emp._id}>
-                        {emp.fullName || `${emp.personalInfo?.firstName} ${emp.personalInfo?.lastName}` || emp.user?.name || 'Unknown'} 
-                        ({emp.employeeId || emp.user?.employeeId || 'N/A'})
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-secondary-300 mb-2">Priority</label>
-                <select
-                  value={isEdit ? selectedTask?.priority || '' : newTask.priority}
-                  onChange={(e) => {
-                    if (isEdit) {
-                      setSelectedTask({...selectedTask, priority: e.target.value});
-                    } else {
-                      setNewTask({...newTask, priority: e.target.value});
-                    }
-                  }}
-                  className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
-                >
-                  <option value="Low">Low</option>
-                  <option value="Medium">Medium</option>
-                  <option value="High">High</option>
-                  <option value="Critical">Critical</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-secondary-300 mb-2">Due Date</label>
-                <input
-                  type="date"
-                  value={isEdit ? selectedTask?.dueDate?.split('T')[0] || '' : newTask.dueDate}
-                  onChange={(e) => {
-                    if (isEdit) {
-                      setSelectedTask({...selectedTask, dueDate: e.target.value});
-                    } else {
-                      setNewTask({...newTask, dueDate: e.target.value});
-                    }
-                  }}
-                  className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-secondary-300 mb-2">Category</label>
-                <select
-                  value={isEdit ? selectedTask?.category || '' : newTask.category}
-                  onChange={(e) => {
-                    if (isEdit) {
-                      setSelectedTask({...selectedTask, category: e.target.value});
-                    } else {
-                      setNewTask({...newTask, category: e.target.value});
-                    }
-                  }}
-                  className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
-                >
-                  <option value="Development">Development</option>
-                  <option value="Design">Design</option>
-                  <option value="Testing">Testing</option>
-                  <option value="Documentation">Documentation</option>
-                  <option value="Bug Fix">Bug Fix</option>
-                  <option value="Feature">Feature</option>
-                  <option value="Maintenance">Maintenance</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-secondary-300 mb-2">Estimated Hours</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.5"
-                  value={isEdit ? selectedTask?.estimatedHours || '' : newTask.estimatedHours}
-                  onChange={(e) => {
-                    if (isEdit) {
-                      setSelectedTask({...selectedTask, estimatedHours: parseFloat(e.target.value) || 0});
-                    } else {
-                      setNewTask({...newTask, estimatedHours: parseFloat(e.target.value) || 0});
-                    }
-                  }}
-                  className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-4">
-              <button
-                type="button"
-                onClick={() => {
-                  if (isEdit) setShowEditModal(false);
-                  else setShowAddModal(false);
-                }}
-                className="px-6 py-3 border border-secondary-600 text-secondary-300 rounded-lg hover:bg-secondary-700/50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={employeesLoading}
-                className="px-6 py-3 bg-gradient-to-r from-neon-pink to-neon-purple text-white font-semibold rounded-lg hover-glow transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Save className="w-4 h-4 mr-2 inline" />
-                {isEdit ? 'Update Task' : 'Create Task'}
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
-    </div>
-  );
-
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -1118,10 +792,421 @@ const handleAddTask = async (e) => {
         </div>
       </div>
 
-      {/* Modals */}
-      {showAddModal && <TaskModal />}
-      {showEditModal && <TaskModal isEdit />}
-      {showViewModal && <TaskModal isView />}
+      {/* Add Task Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-0 sm:p-2 md:p-4">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-md" onClick={() => setShowAddModal(false)} />
+          <div className="relative glass-morphism neon-border rounded-2xl p-1 sm:p-3 md:p-4 lg:p-6 w-full sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-2xl max-h-[85vh] overflow-auto shadow-2xl">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white">Create New Task</h2>
+              <button onClick={() => setShowAddModal(false)} className="text-secondary-400 hover:text-white">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <form onSubmit={handleAddTask} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-secondary-300 mb-2">Title</label>
+                  <input
+                    type="text"
+                    value={newTask.title}
+                    onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+                    className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-secondary-300 mb-2">Project</label>
+                  <select
+                    value={newTask.project}
+                    onChange={(e) => setNewTask({...newTask, project: e.target.value})}
+                    className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                    required
+                  >
+                    <option value="">Select Project</option>
+                    {projects.map(project => (
+                      <option key={project} value={project}>{project}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-secondary-300 mb-2">Description</label>
+                <textarea
+                  value={newTask.description}
+                  onChange={(e) => setNewTask({...newTask, description: e.target.value})}
+                  rows="3"
+                  className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                  required
+                ></textarea>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-secondary-300 mb-2">Assign To</label>
+                  {employeesLoading ? (
+                    <div className="flex items-center space-x-2 px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg">
+                      <Loader2 className="w-4 h-4 animate-spin text-neon-pink" />
+                      <span className="text-secondary-400">Loading employees...</span>
+                    </div>
+                  ) : (
+                    <select
+                      value={newTask.assignedTo}
+                      onChange={(e) => setNewTask({...newTask, assignedTo: e.target.value})}
+                      className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                      required
+                    >
+                      <option value="">Select Employee</option>
+                      {(getAssignableEmployees(newTask.category)).map(emp => (
+                        <option key={emp._id} value={emp._id}>
+                          {emp.fullName || `${emp.personalInfo?.firstName} ${emp.personalInfo?.lastName}` || emp.user?.name || 'Unknown'} 
+                          ({emp.employeeId || emp.user?.employeeId || 'N/A'})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-secondary-300 mb-2">Priority</label>
+                  <select
+                    value={newTask.priority}
+                    onChange={(e) => setNewTask({...newTask, priority: e.target.value})}
+                    className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                  >
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                    <option value="Critical">Critical</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-secondary-300 mb-2">Due Date</label>
+                  <input
+                    type="date"
+                    value={newTask.dueDate}
+                    onChange={(e) => setNewTask({...newTask, dueDate: e.target.value})}
+                    className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-secondary-300 mb-2">Category</label>
+                  <select
+                    value={newTask.category}
+                    onChange={(e) => setNewTask({...newTask, category: e.target.value})}
+                    className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                  >
+                    <option value="Development">Development</option>
+                    <option value="Design">Design</option>
+                    <option value="Testing">Testing</option>
+                    <option value="Documentation">Documentation</option>
+                    <option value="Bug Fix">Bug Fix</option>
+                    <option value="Feature">Feature</option>
+                    <option value="Maintenance">Maintenance</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-secondary-300 mb-2">Estimated Hours</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={newTask.estimatedHours}
+                    onChange={(e) => setNewTask({...newTask, estimatedHours: parseFloat(e.target.value) || 0})}
+                    className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end space-x-4">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="px-6 py-3 border border-secondary-600 text-secondary-300 rounded-lg hover:bg-secondary-700/50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={employeesLoading}
+                  className="px-6 py-3 bg-gradient-to-r from-neon-pink to-neon-purple text-white font-semibold rounded-lg hover-glow transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Save className="w-4 h-4 mr-2 inline" />
+                  Create Task
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Task Modal */}
+      {showEditModal && selectedTask && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-0 sm:p-2 md:p-4">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-md" onClick={() => setShowEditModal(false)} />
+          <div className="relative glass-morphism neon-border rounded-2xl p-1 sm:p-3 md:p-4 lg:p-6 w-full sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-2xl max-h-[85vh] overflow-auto shadow-2xl">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white">Edit Task</h2>
+              <button onClick={() => setShowEditModal(false)} className="text-secondary-400 hover:text-white">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <form onSubmit={handleEditTask} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-secondary-300 mb-2">Title</label>
+                  <input
+                    type="text"
+                    value={selectedTask?.title || ''}
+                    onChange={(e) => setSelectedTask({...selectedTask, title: e.target.value})}
+                    className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-secondary-300 mb-2">Project</label>
+                  <select
+                    value={selectedTask?.project || ''}
+                    onChange={(e) => setSelectedTask({...selectedTask, project: e.target.value})}
+                    className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                    required
+                  >
+                    <option value="">Select Project</option>
+                    {projects.map(project => (
+                      <option key={project} value={project}>{project}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-secondary-300 mb-2">Description</label>
+                <textarea
+                  value={selectedTask?.description || ''}
+                  onChange={(e) => setSelectedTask({...selectedTask, description: e.target.value})}
+                  rows="3"
+                  className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                  required
+                ></textarea>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-secondary-300 mb-2">Assign To</label>
+                  {employeesLoading ? (
+                    <div className="flex items-center space-x-2 px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg">
+                      <Loader2 className="w-4 h-4 animate-spin text-neon-pink" />
+                      <span className="text-secondary-400">Loading employees...</span>
+                    </div>
+                  ) : (
+                    <select
+                      value={selectedTask?.assignedTo?._id || ''}
+                      onChange={(e) => {
+                        const employee = employees.find(emp => emp._id === e.target.value);
+                        setSelectedTask({...selectedTask, assignedTo: employee});
+                      }}
+                      className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                      required
+                    >
+                      <option value="">Select Employee</option>
+                      {(getAssignableEmployees(selectedTask?.category)).map(emp => (
+                        <option key={emp._id} value={emp._id}>
+                          {emp.fullName || `${emp.personalInfo?.firstName} ${emp.personalInfo?.lastName}` || emp.user?.name || 'Unknown'} 
+                          ({emp.employeeId || emp.user?.employeeId || 'N/A'})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-secondary-300 mb-2">Priority</label>
+                  <select
+                    value={selectedTask?.priority || ''}
+                    onChange={(e) => setSelectedTask({...selectedTask, priority: e.target.value})}
+                    className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                  >
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                    <option value="Critical">Critical</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-secondary-300 mb-2">Due Date</label>
+                  <input
+                    type="date"
+                    value={selectedTask?.dueDate?.split('T')[0] || ''}
+                    onChange={(e) => setSelectedTask({...selectedTask, dueDate: e.target.value})}
+                    className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-secondary-300 mb-2">Category</label>
+                  <select
+                    value={selectedTask?.category || ''}
+                    onChange={(e) => setSelectedTask({...selectedTask, category: e.target.value})}
+                    className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                  >
+                    <option value="Development">Development</option>
+                    <option value="Design">Design</option>
+                    <option value="Testing">Testing</option>
+                    <option value="Documentation">Documentation</option>
+                    <option value="Bug Fix">Bug Fix</option>
+                    <option value="Feature">Feature</option>
+                    <option value="Maintenance">Maintenance</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-secondary-300 mb-2">Estimated Hours</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={selectedTask?.estimatedHours || ''}
+                    onChange={(e) => setSelectedTask({...selectedTask, estimatedHours: parseFloat(e.target.value) || 0})}
+                    className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end space-x-4">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="px-6 py-3 border border-secondary-600 text-secondary-300 rounded-lg hover:bg-secondary-700/50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={employeesLoading}
+                  className="px-6 py-3 bg-gradient-to-r from-neon-pink to-neon-purple text-white font-semibold rounded-lg hover-glow transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Save className="w-4 h-4 mr-2 inline" />
+                  Update Task
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* View Task Modal */}
+      {showViewModal && selectedTask && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-0 sm:p-2 md:p-4">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-md" onClick={() => setShowViewModal(false)} />
+          <div className="relative glass-morphism neon-border rounded-2xl p-1 sm:p-3 md:p-4 lg:p-6 w-full sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-2xl max-h-[85vh] overflow-auto shadow-2xl">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white">Task Details</h2>
+              <button onClick={() => setShowViewModal(false)} className="text-secondary-400 hover:text-white">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            {modalLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-neon-pink" />
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between p-4 bg-secondary-800/30 rounded-lg">
+                  <div>
+                    <h3 className="text-xl font-bold text-white">{selectedTask.title}</h3>
+                    <p className="text-neon-pink">{selectedTask.project}</p>
+                  </div>
+                  <span className={`px-3 py-1 text-sm rounded-full ${getStatusColor(selectedTask.status)}`}>
+                    {selectedTask.status}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm text-secondary-400">Assigned To</label>
+                      <p className="text-white font-medium">
+                        {selectedTask.assignedTo?.user?.name || selectedTask.assignedTo?.fullName || 'Unknown Employee'}
+                      </p>
+                      <p className="text-secondary-400 text-sm">
+                        {selectedTask.assignedTo?.user?.employeeId || selectedTask.assignedTo?.employeeId || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-secondary-400">Priority</label>
+                      <span className={`inline-block px-2 py-1 text-xs rounded-full ${getPriorityColor(selectedTask.priority)}`}>
+                        {selectedTask.priority}
+                      </span>
+                    </div>
+                    <div>
+                      <label className="text-sm text-secondary-400">Category</label>
+                      <p className="text-white font-medium">{selectedTask.category}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-secondary-400">Created</label>
+                      <p className="text-white font-medium">{formatDate(selectedTask.createdAt)}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm text-secondary-400">Due Date</label>
+                      <p className={`font-medium ${isOverdue(selectedTask.dueDate, selectedTask.status) ? 'text-red-400' : 'text-white'}`}>
+                        {formatDate(selectedTask.dueDate)}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-secondary-400">Progress</label>
+                      <div className="flex items-center space-x-2">
+                        <div className="flex-1 bg-secondary-700 rounded-full h-2">
+                          <div 
+                            className="bg-gradient-to-r from-neon-pink to-neon-purple h-2 rounded-full"
+                            style={{ width: `${selectedTask.progress}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-neon-pink text-sm">{selectedTask.progress}%</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm text-secondary-400">Hours</label>
+                      <p className="text-white font-medium">
+                        {Math.round(selectedTask.actualHours || 0)} / {selectedTask.estimatedHours || 0} hrs
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-secondary-400">Last Updated</label>
+                      <p className="text-white font-medium">{formatDate(selectedTask.updatedAt)}</p>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm text-secondary-400">Description</label>
+                  <p className="text-white bg-secondary-800/30 p-3 rounded-lg mt-1">{selectedTask.description}</p>
+                </div>
+                {selectedTask.comments && selectedTask.comments.length > 0 && (
+                  <div>
+                    <label className="text-sm text-secondary-400">Recent Comments ({selectedTask.comments.length})</label>
+                    <div className="space-y-2 mt-2 max-h-40 overflow-y-auto">
+                      {selectedTask.comments.slice(-3).map((comment) => (
+                        <div key={comment._id} className="bg-secondary-800/30 p-3 rounded-lg">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <span className="text-white text-sm font-medium">
+                              {comment.user?.name || 'Unknown'}
+                            </span>
+                            <span className="text-secondary-400 text-xs">
+                              {formatDate(comment.createdAt)}
+                            </span>
+                          </div>
+                          <p className="text-secondary-300 text-sm">{comment.text}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 };

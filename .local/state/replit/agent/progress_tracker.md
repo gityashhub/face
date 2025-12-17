@@ -26,3 +26,13 @@
 [x] 10. Reinstalled npm packages for backend and frontend
 [x] 11. Verified both workflows are running successfully
 [x] 12. Import completed
+
+## Bug Fixes (Session 3)
+
+[x] 17. Fixed AdminTaskManagement.jsx - Task form input field focus issue
+    - Moved TaskModal from inner component to inline JSX rendering
+    - This prevents component recreation on every keystroke that was causing inputs to lose focus
+[x] 18. Fixed BDE Sales department access
+    - Extended BDE_DEPARTMENTS list with more variations (bd, bdexecutive, sales, etc.)
+    - Updated isDepartmentAllowed to use flexible matching with partial match support
+    - This allows employees in BDE department to access sales module and create leads

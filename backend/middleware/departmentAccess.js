@@ -4,7 +4,25 @@ import Employee from '../models/Employee.js';
 
 const normalizeDept = (dept) => {
   if (!dept) return '';
+  // Normalize: lowercase, remove all non-alphanumeric characters
   return String(dept).replace(/\s+/g, '').replace(/[^a-z0-9]/gi, '').toLowerCase();
+};
+
+// Check if a department matches any in the allowed list (normalized comparison)
+const matchesDeptFlexible = (department, allowed = []) => {
+  const dept = department?.name || department?.code || department || '';
+  const normalized = normalizeDept(dept);
+  
+  // Direct match first
+  if (allowed.some(target => normalized === normalizeDept(target))) {
+    return true;
+  }
+  
+  // Partial match - check if normalized contains any allowed value or vice versa
+  return allowed.some(target => {
+    const normalizedTarget = normalizeDept(target);
+    return normalized.includes(normalizedTarget) || normalizedTarget.includes(normalized);
+  });
 };
 
 const matchesAllowedDept = (department, allowed = []) => {
@@ -58,5 +76,5 @@ export const requireDepartment = (allowedDepartments = []) => async (req, res, n
 };
 
 export const normalizeDepartmentValue = normalizeDept;
-export const isDepartmentAllowed = matchesAllowedDept;
+export const isDepartmentAllowed = matchesDeptFlexible;
 

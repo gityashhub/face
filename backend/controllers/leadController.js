@@ -5,7 +5,18 @@ import { validationResult } from 'express-validator';
 import { sendEmail } from '../utils/email.js';
 import { isDepartmentAllowed } from '../middleware/departmentAccess.js';
 
-const BDE_DEPARTMENTS = ['bde', 'businessdevelopmentexecutive', 'sales', 'businessdevelopment'];
+const BDE_DEPARTMENTS = [
+  'bde', 
+  'businessdevelopmentexecutive', 
+  'sales', 
+  'businessdevelopment',
+  'business development',
+  'business development executive',
+  'bd',
+  'bdexecutive',
+  'salesdepartment',
+  'salesteam'
+];
 
 // Create new lead - ENHANCED ERROR HANDLING
 export const createLead = async (req, res) => {
