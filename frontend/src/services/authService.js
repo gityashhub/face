@@ -1,5 +1,5 @@
 // services/authService.js - Updated with getMyProfile method
-import api from '../api/axios';
+import api from './api';
 
 export const authService = {
   // Login user

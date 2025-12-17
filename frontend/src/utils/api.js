@@ -3,14 +3,12 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 
 // Create axios instance with base URL
-const BASE_URL = import.meta.env.VITE_API_URL || 'https://face-votd.onrender.com/api';
-
 const API = axios.create({
-  baseURL: BASE_URL,
+  baseURL: '/api',
   headers: {
     'Content-Type': 'application/json'
   },
-  timeout: 60000 // 60 second timeout for all requests
+  timeout: 30000 // 30 second timeout for all requests
 });
 
 // Get token from storage (check both localStorage and sessionStorage)

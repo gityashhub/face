@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api from '../../api/axios';
+import axios from 'axios';
 import AdminLayout from '../../components/Admin/layout/AdminLayout';
 import { 
   Calendar, 
@@ -64,7 +64,10 @@ const AdminLeaveManagement = () => {
   // Fetch leave statistics
   const fetchStats = async () => {
     try {
-      const response = await api.get('/leaves/stats');
+      const token = localStorage.getItem('token');
+      const response = await axios.get('/api/leaves/stats', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       
       if (response.data.success) {
         setStats(response.data.stats);
@@ -82,9 +85,11 @@ const AdminLeaveManagement = () => {
   const handleApprove = async (leaveId, comments = '') => {
     try {
       setActionLoading(true);
+      const token = localStorage.getItem('token');
       
-      await api.put(`/leaves/${leaveId}/approve`, 
-        { comments }
+      await axios.put(`/api/leaves/${leaveId}/approve`, 
+        { comments },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       
       toast.success('Leave application approved!');
@@ -102,9 +107,11 @@ const AdminLeaveManagement = () => {
   const handleReject = async (leaveId, comments = '') => {
     try {
       setActionLoading(true);
+      const token = localStorage.getItem('token');
       
-      await api.put(`/leaves/${leaveId}/reject`, 
-        { comments }
+      await axios.put(`/api/leaves/${leaveId}/reject`, 
+        { comments },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       
       toast.success('Leave application rejected!');

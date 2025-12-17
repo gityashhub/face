@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../api/axios';
 import EmployeeLayout from '../../components/Employee/EmployeeLayout/EmployeeLayout';
 import {
   Calendar as CalendarIcon,
@@ -48,7 +48,10 @@ const EmployeeLeaveRequests = () => {
   const fetchLeaveRequests = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/leaves');
+      const token = localStorage.getItem('token');
+      const response = await axios.get('/api/leaves', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       
       if (response.data.success) {
         setLeaveRequests(response.data.leaves || []);
@@ -64,10 +67,7 @@ const EmployeeLeaveRequests = () => {
 // Update the fetchLeaveBalance function
 const fetchLeaveBalance = async () => {
   try {
-    const token = localStorage.getItem('token');
-    const response = await axios.get('/api/leaves/balance', {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const response = await api.get('/leaves/balance');
     
     if (response.data.success) {
       setLeaveBalance(response.data.balance);
@@ -164,7 +164,10 @@ const handleApplyLeave = async (e) => {
   const handleCancelLeave = async (leaveId) => {
     if (window.confirm('Are you sure you want to cancel this leave request?')) {
       try {
-        await api.put(`/leaves/${leaveId}/cancel`, {});
+        const token = localStorage.getItem('token');
+        await axios.put(`/api/leaves/${leaveId}/cancel`, {}, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
         
         toast.success('Leave request cancelled!');
         fetchLeaveRequests();
