@@ -55,7 +55,7 @@ export const requireDepartment = (allowedDepartments = []) => async (req, res, n
     }
 
     const dept = employee.workInfo?.department;
-    if (!matchesAllowedDept(dept, allowedDepartments)) {
+    if (!matchesDeptFlexible(dept, allowedDepartments)) {
       return res.status(403).json({
         success: false,
         message: 'Access denied for your department',

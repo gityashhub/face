@@ -36,3 +36,19 @@
     - Extended BDE_DEPARTMENTS list with more variations (bd, bdexecutive, sales, etc.)
     - Updated isDepartmentAllowed to use flexible matching with partial match support
     - This allows employees in BDE department to access sales module and create leads
+
+## Sales Data and Admin Actions Fix (Session 4)
+
+[x] 19. Fixed getLeads to populate department before checking access
+    - Added .populate('workInfo.department', 'name code') call
+[x] 20. Fixed requireDepartment middleware to use flexible matching
+    - Changed from matchesAllowedDept to matchesDeptFlexible
+    - This properly allows BDE employees to access sales module
+[x] 21. Added reassignLead function and route to backend
+    - Admin can now reassign leads to different BDE employees
+[x] 22. Added getBDEEmployees function to get employees from BDE department
+    - Used in reassign dropdown to show only BDE employees
+[x] 23. Added reassignLead and getBDEEmployees to frontend API
+[x] 24. Updated AdminSalesDashboard to fetch BDE employees and add view lead modal
+    - Reassign dropdown now shows BDE employees
+    - Added view lead modal with full lead details
