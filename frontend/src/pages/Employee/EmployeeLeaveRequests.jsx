@@ -48,10 +48,7 @@ const EmployeeLeaveRequests = () => {
   const fetchLeaveRequests = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const response = await axios.get('/api/leaves', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.get('/leaves');
       
       if (response.data.success) {
         setLeaveRequests(response.data.leaves || []);
@@ -167,10 +164,7 @@ const handleApplyLeave = async (e) => {
   const handleCancelLeave = async (leaveId) => {
     if (window.confirm('Are you sure you want to cancel this leave request?')) {
       try {
-        const token = localStorage.getItem('token');
-        await axios.put(`/api/leaves/${leaveId}/cancel`, {}, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await api.put(`/leaves/${leaveId}/cancel`, {});
         
         toast.success('Leave request cancelled!');
         fetchLeaveRequests();

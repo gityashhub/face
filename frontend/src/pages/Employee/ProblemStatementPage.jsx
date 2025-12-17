@@ -59,9 +59,8 @@ const ProblemStatementPage = () => {
     }
 
     try {
-      const res = await axios.post(`${API_BASE}/problems`, 
-        { description: newProblem },
-        { headers: { Authorization: `Bearer ${getAuthToken()}` } }
+      const res = await api.post('/problems', 
+        { description: newProblem }
       );
       if (res.data?.success) {
         setProblems(prev => [res.data.data, ...prev]);
@@ -76,10 +75,7 @@ const ProblemStatementPage = () => {
 
   const handleSolveProblem = async (problemId) => {
     try {
-      const res = await axios.patch(`${API_BASE}/problems/${problemId}/solve`, 
-        {},
-        { headers: { Authorization: `Bearer ${getAuthToken()}` } }
-      );
+      const res = await api.patch(`/problems/${problemId}/solve`, {});
       if (res.data?.success) {
         setProblems(prev =>
           prev.map(p => p._id === problemId ? res.data.data : p)

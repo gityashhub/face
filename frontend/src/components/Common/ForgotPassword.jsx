@@ -37,7 +37,7 @@ const ForgotPassword = () => {
     setError('');
     
     try {
-      const response = await API.post('/auth/forgot-password', { email });
+      const response = await api.post('/auth/forgot-password', { email });
       
       if (response.data.success) {
         setSent(true);

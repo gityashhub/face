@@ -55,8 +55,7 @@ This guide details how to deploy the **Backend** to **Render** and the **Fronten
 2.  **Configure the Build:**
     - **Base directory:** `frontend`
     - **Build command:** `npm run build`
-    - **Publish directory:** `frontend/dist` (Netlify might default to `dist`, make sure it's `frontend/dist` if Base directory is set, or just `dist` relative to the base).
-        - *Correction:* If Base directory is `frontend`, Publish directory should be `dist`.
+    - **Publish directory:** `dist` (Since the base directory is already `frontend`, we just need `dist` relative to it).
 
 3.  **Environment Variables:**
     - Click on **Show advanced** or go to **Site settings > Environment variables** after creation.
