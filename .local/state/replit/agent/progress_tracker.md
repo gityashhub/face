@@ -61,3 +61,6 @@
 [x] 28. Verified both Backend Server and Frontend workflows are running successfully
 [x] 29. Confirmed API calls are working (login, dashboard, employees, departments)
 [x] 30. Import migration completed successfully
+[x] 31. Updated api/index.js with Render backend URL fallback
+[x] 32. Verified all API files point to https://face-votd.onrender.com/api
+[x] 33. Created netlify.toml for SPA routing on Netlify deployment
