@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { isModulePathAllowed, normalizeDepartment } from '../utils/departmentAccess';
+import { isModulePathAllowed, normalizeDepartment, COMMON_MODULE_KEYS, moduleKeyFromPath } from '../utils/departmentAccess';
 
 const ProtectedRoute = ({ children, role, requiredRole }) => {
   const location = useLocation();
@@ -31,8 +31,17 @@ const ProtectedRoute = ({ children, role, requiredRole }) => {
   }
 
   // Department-based access control for employees
+  // IMPORTANT: Only block access to pages if we have CLEAR evidence the user shouldn't access them
+  // Default to allowing access to prevent race conditions during page load
   if (userRole === 'employee') {
-    // Get department from multiple sources
+    const moduleKey = moduleKeyFromPath(location.pathname);
+    
+    // Always allow common module paths and non-module paths (profile, settings, etc.)
+    if (!moduleKey || COMMON_MODULE_KEYS.includes(moduleKey)) {
+      return children;
+    }
+    
+    // For department-specific paths, check if we have a valid department
     let department = localStorage.getItem('userDepartment') || 
                      sessionStorage.getItem('userDepartment');
 
@@ -46,16 +55,17 @@ const ProtectedRoute = ({ children, role, requiredRole }) => {
       }
     }
 
-    // Only restrict access if we have a valid department AND the path is not allowed
-    // If department is missing or invalid, allow access (let the page handle it)
-    if (department && department !== 'N/A' && department !== '') {
-      const normalizedDept = normalizeDepartment(department);
-      if (!isModulePathAllowed(location.pathname, normalizedDept)) {
-        return <Navigate to="/employee/dashboard" replace />;
-      }
+    // If no department is available yet, ALLOW navigation
+    // This prevents premature redirects during initial load
+    if (!department || department === 'N/A' || department === '') {
+      return children;
     }
-    // If no department is set yet, allow navigation (prevents premature redirects)
-    // The actual page can handle unauthorized access if needed
+
+    // Only block if we have a valid department AND the path is clearly not allowed
+    const normalizedDept = normalizeDepartment(department);
+    if (!isModulePathAllowed(location.pathname, normalizedDept)) {
+      return <Navigate to="/employee/dashboard" replace />;
+    }
   }
 
   return children;

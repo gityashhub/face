@@ -47,12 +47,23 @@ const getInitialEmployeeData = () => {
   return null;
 };
 
+const getStoredDepartment = () => {
+  return localStorage.getItem('userDepartment') || 
+         sessionStorage.getItem('userDepartment') || 
+         'N/A';
+};
+
 const EmployeeLayout = ({ children, employeeData }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileDropdown, setProfileDropdown] = useState(false);
   const [notificationDropdown, setNotificationDropdown] = useState(false);
   const [fetchedEmployeeData, setFetchedEmployeeData] = useState(() => employeeData || getInitialEmployeeData());
   const [loading, setLoading] = useState(!employeeData && !getInitialEmployeeData());
+  
+  // Use a ref to store stable department value that doesn't reset on navigation
+  const stableDepartmentRef = useRef(getStoredDepartment());
+  const [stableDepartment, setStableDepartment] = useState(getStoredDepartment());
+  const hasFetchedRef = useRef(false);
   const [notifications, setNotifications] = useState([
     {
       id: 1,
@@ -79,14 +90,20 @@ const EmployeeLayout = ({ children, employeeData }) => {
   const notificationRef = useRef(null);
   const profileRef = useRef(null);
 
-  // Fetch employee data on mount if not provided via props
-  // This runs in the background to get fresh data, but doesn't block the UI
+  // Fetch employee data ONCE on mount - not on every navigation
+  // Use hasFetchedRef to prevent refetching on route changes
   useEffect(() => {
     const fetchEmployeeData = async () => {
+      // Skip if already fetched
+      if (hasFetchedRef.current) {
+        return;
+      }
+      
       // If employeeData is already provided via props, use it and don't fetch
       if (employeeData) {
         setFetchedEmployeeData(employeeData);
         setLoading(false);
+        hasFetchedRef.current = true;
         return;
       }
 
@@ -144,16 +161,21 @@ const EmployeeLayout = ({ children, employeeData }) => {
           };
 
           setFetchedEmployeeData(combinedData);
+          
+          // Update stable department ref and state - this ensures sidebar doesn't reset
+          if (departmentValue && departmentValue !== 'N/A') {
+            stableDepartmentRef.current = departmentValue;
+            setStableDepartment(departmentValue);
+            localStorage.setItem('userDepartment', departmentValue);
+          }
 
-          // Update localStorage with fresh data - only update department if it's a valid value
+          // Update localStorage with fresh data
           if (userData.name) localStorage.setItem('userName', userData.name);
           if (userData.email) localStorage.setItem('userEmail', userData.email);
           if (userData.employeeId) localStorage.setItem('employeeId', userData.employeeId);
-          // Only update department if we got a valid value from API (not N/A or empty)
-          if (departmentValue && departmentValue !== 'N/A') {
-            localStorage.setItem('userDepartment', departmentValue);
-          }
         }
+        
+        hasFetchedRef.current = true;
       } catch (error) {
         console.error('Error fetching employee data in layout:', error);
         // Only set fallback if we don't already have data
@@ -173,13 +195,14 @@ const EmployeeLayout = ({ children, employeeData }) => {
             },
           });
         }
+        hasFetchedRef.current = true;
       } finally {
         setLoading(false);
       }
     };
 
     fetchEmployeeData();
-  }, [employeeData]);
+  }, []); // Empty dependency array - only run once on mount
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -218,9 +241,10 @@ const NAV_CATALOG = {
     },
   };
 
-  // Pick nav items based on department (fallback to full list if not matched)
+  // Pick nav items based on STABLE department (doesn't reset on navigation)
+  // Use stableDepartment state which is initialized from localStorage and only updated on successful API fetch
   const deptKey = normalizeDepartment(
-    emp.workInfo?.department?.name || emp.workInfo?.department
+    stableDepartment || emp.workInfo?.department?.name || emp.workInfo?.department
   );
   const allowedKeys = allowedKeysForDepartment(deptKey);
   const sidebarItems = allowedKeys.map((key) => NAV_CATALOG[key]).filter(Boolean);
