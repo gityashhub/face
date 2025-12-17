@@ -10,7 +10,7 @@ const API = axios.create({
   headers: {
     'Content-Type': 'application/json'
   },
-  timeout: 30000 // 30 second timeout for all requests
+  timeout: 60000 // 60 second timeout for all requests
 });
 
 // Get token from storage (check both localStorage and sessionStorage)
