@@ -1,0 +1,97 @@
+The system provides a department-based employee dashboard, where each employee sees only the modules relevant to their assigned department, along with a set of common modules available to all employees.
+
+🔐 Authentication & Department Resolution
+
+When an employee logs in, the system:
+
+Authenticates the user
+
+Determines the employee’s assigned department
+
+Loads the employee panel based on this department
+
+Department information is treated as a core part of the user session and remains available throughout navigation.
+
+📂 Common Sections (Available to All Employees)
+
+Every employee, regardless of department, has access to the following sections:
+
+Dashboard
+
+Attendance
+
+Leave Requests
+
+These sections are:
+
+Always visible in the sidebar
+
+Always accessible
+
+Persist across all navigation and sessions
+
+🧩 Department-Specific Sections
+
+The employee panel dynamically adds modules based on department:
+
+BDE (Business Development Executive)
+
+Sales
+
+Developer
+
+Tasks
+
+Problem Statements
+
+Designing
+
+Tasks
+
+These sections are:
+
+Visible immediately upon login
+
+Fully functional and clickable
+
+Persist across route changes and navigation
+
+Restricted to employees of the corresponding department only
+
+🧭 Navigation & Routing Behavior
+
+Each sidebar section maps to a dedicated route and page
+
+Clicking a section:
+
+Opens its respective page
+
+Does not redirect to the dashboard unless explicitly selected
+
+Sidebar structure remains stable and unchanged while navigating between pages
+
+Department-specific sections do not disappear or reset during navigation
+
+🔒 Access Control & Security
+
+Employees can access only:
+
+Common sections
+
+Sections assigned to their department
+
+Unauthorized access via direct URL manipulation is prevented through backend validation
+
+Frontend visibility and backend authorization work together to enforce access rules
+
+🎯 Overall Outcome
+
+The employee panel delivers a consistent, predictable, and secure user experience, ensuring:
+
+Clear role-based access
+
+Persistent navigation
+
+Correct module availability
+
+Seamless interaction across all sections

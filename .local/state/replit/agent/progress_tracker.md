@@ -11,6 +11,13 @@
 [x] 8. Fixed EmployeeLayout.jsx - Data fetch now only runs once on mount (not on every navigation)
 [x] 9. Fixed EmployeeLayout.jsx - Sidebar items now based on stable department state
 
+## Department Persistence Fix (Session 2)
+
+[x] 10. Created EmployeeContext.jsx - A React context provider that stores employee data and department at app level
+[x] 11. Updated App.jsx - Wrapped all employee routes with EmployeeProvider so state persists across navigation
+[x] 12. Updated EmployeeLayout.jsx - Now uses useEmployee hook from context instead of local state
+[x] 13. Verified workflows are running correctly
+
 ## Import Completion
 
 [x] 10. Reinstalled npm packages for backend and frontend

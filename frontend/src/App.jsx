@@ -7,6 +7,7 @@ import AdminDashboardPage from './pages/Admin/AdminDashboardPage';
 import EmployeeManagement from './pages/Admin/EmployeeManagement';
 import EmployeeDashboard from './pages/Employee/EmployeeDashboard';
 import ProtectedRoute from './routes/ProtectedRoute';
+import { EmployeeProvider } from './context/EmployeeContext';
 import './App.css';
 import AdminLeaveManagement from './pages/Admin/AdminLeaveManagement';
 import AdminTaskManagement from './pages/Admin/AdminTaskManagement';
@@ -105,51 +106,57 @@ function App() {
             </ProtectedRoute>
           } />
           
-          {/* Employee Routes */}
-          <Route path="/employee/dashboard" element={
-            <ProtectedRoute role="employee">
-              <EmployeeDashboard />
-            </ProtectedRoute>
-          } />
-          <Route path="/employee/leaves" element={
-            <ProtectedRoute role="employee">
-              <EmployeeLeaveRequests />
-            </ProtectedRoute>
-          } />
-          <Route path="/employee/attendance" element={
-            <ProtectedRoute role="employee">
-              <EmployeeAttendance/>
-            </ProtectedRoute>
-          } />
-          <Route path="/employee/tasks" element={
-            <ProtectedRoute role="employee">
-              <EmployeeTasks />
-            </ProtectedRoute>
-          } />
-          <Route path="/employee/leads" element={
-            <ProtectedRoute role="employee">
-              <LeadManagement/>
-            </ProtectedRoute>
-          } />
-          <Route path="/employee/problems" element={
-            <ProtectedRoute role="employee">
-              <ProblemStatementPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/employee/sales" element={
-            <ProtectedRoute role="employee">
-              <SalesPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/employee/profile" element={
-            <ProtectedRoute role="employee">
-              <EmployeeProfile />
-            </ProtectedRoute>
-          } />
-          <Route path="/employee/settings" element={
-            <ProtectedRoute role="employee">
-              <EmployeeSettings />
-            </ProtectedRoute>
+          {/* Employee Routes - Wrapped with EmployeeProvider for persistent state */}
+          <Route path="/employee/*" element={
+            <EmployeeProvider>
+              <Routes>
+                <Route path="dashboard" element={
+                  <ProtectedRoute role="employee">
+                    <EmployeeDashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="leaves" element={
+                  <ProtectedRoute role="employee">
+                    <EmployeeLeaveRequests />
+                  </ProtectedRoute>
+                } />
+                <Route path="attendance" element={
+                  <ProtectedRoute role="employee">
+                    <EmployeeAttendance/>
+                  </ProtectedRoute>
+                } />
+                <Route path="tasks" element={
+                  <ProtectedRoute role="employee">
+                    <EmployeeTasks />
+                  </ProtectedRoute>
+                } />
+                <Route path="leads" element={
+                  <ProtectedRoute role="employee">
+                    <LeadManagement/>
+                  </ProtectedRoute>
+                } />
+                <Route path="problems" element={
+                  <ProtectedRoute role="employee">
+                    <ProblemStatementPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="sales" element={
+                  <ProtectedRoute role="employee">
+                    <SalesPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="profile" element={
+                  <ProtectedRoute role="employee">
+                    <EmployeeProfile />
+                  </ProtectedRoute>
+                } />
+                <Route path="settings" element={
+                  <ProtectedRoute role="employee">
+                    <EmployeeSettings />
+                  </ProtectedRoute>
+                } />
+              </Routes>
+            </EmployeeProvider>
           } />
         </Routes>
         <Toaster position="top-right" />

@@ -19,63 +19,16 @@ import {
   TrendingUp,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { authAPI } from '../../../utils/api';
-import { allowedKeysForDepartment, normalizeDepartment } from '../../../utils/departmentAccess';
+import { allowedKeysForDepartment } from '../../../utils/departmentAccess';
+import { useEmployee } from '../../../context/EmployeeContext';
 
-const getInitialEmployeeData = () => {
-  const storedDepartment = localStorage.getItem('userDepartment');
-  const storedName = localStorage.getItem('userName');
-  const storedEmail = localStorage.getItem('userEmail');
-  const storedEmployeeId = localStorage.getItem('employeeId');
-  
-  if (storedDepartment || storedName || storedEmail) {
-    return {
-      personalInfo: {
-        firstName: storedName?.split(' ')[0] || 'Unknown',
-        lastName: storedName?.split(' ')[1] || 'User',
-      },
-      workInfo: {
-        position: 'Employee',
-        department: storedDepartment || 'N/A',
-      },
-      employeeId: storedEmployeeId || 'N/A',
-      contactInfo: {
-        personalEmail: storedEmail || 'user@company.com',
-      },
-    };
-  }
-  return null;
-};
-
-const getStoredDepartment = () => {
-  return localStorage.getItem('userDepartment') || 
-         sessionStorage.getItem('userDepartment') || 
-         'N/A';
-};
-
-const EmployeeLayout = ({ children, employeeData }) => {
+const EmployeeLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileDropdown, setProfileDropdown] = useState(false);
   const [notificationDropdown, setNotificationDropdown] = useState(false);
-  const [fetchedEmployeeData, setFetchedEmployeeData] = useState(() => employeeData || getInitialEmployeeData());
-  const [loading, setLoading] = useState(!employeeData && !getInitialEmployeeData());
   
-  // Use a ref to store stable department value that doesn't reset on navigation
-  // Initialize with current localStorage value (may be updated from login)
-  const initialDept = getStoredDepartment();
-  const stableDepartmentRef = useRef(initialDept);
-  const [stableDepartment, setStableDepartment] = useState(initialDept);
-  const hasFetchedRef = useRef(false);
+  const { employeeData: contextEmployeeData, normalizedDepartment, loading } = useEmployee();
   
-  // Sync stableDepartment with localStorage on mount and when it changes
-  // This ensures we pick up the department stored during login
-  useEffect(() => {
-    const currentDept = getStoredDepartment();
-    if (currentDept && currentDept !== 'N/A' && currentDept !== stableDepartment) {
-      stableDepartmentRef.current = currentDept;
-      setStableDepartment(currentDept);
-    }
-  }, []);
   const [notifications, setNotifications] = useState([
     {
       id: 1,
@@ -102,131 +55,6 @@ const EmployeeLayout = ({ children, employeeData }) => {
   const notificationRef = useRef(null);
   const profileRef = useRef(null);
 
-  // Fetch employee data ONCE on mount - not on every navigation
-  // Use hasFetchedRef to prevent refetching on route changes
-  useEffect(() => {
-    const fetchEmployeeData = async () => {
-      // Skip if already fetched
-      if (hasFetchedRef.current) {
-        return;
-      }
-      
-      // If employeeData is already provided via props, use it and don't fetch
-      if (employeeData) {
-        setFetchedEmployeeData(employeeData);
-        setLoading(false);
-        hasFetchedRef.current = true;
-        return;
-      }
-
-      // Check if we have initial data from localStorage - don't show loading if we do
-      const hasInitialData = getInitialEmployeeData() !== null;
-      
-      // Only show loading spinner if we have no data at all
-      if (!hasInitialData && !fetchedEmployeeData) {
-        setLoading(true);
-      }
-
-      try {
-        const response = await authAPI.getProfile();
-
-        if (response.data.success) {
-          const userData = response.data.data.user;
-          const employeeDataFromAPI = response.data.data.employee;
-
-          // Extract department - handle both string and object formats
-          // Priority: API response > localStorage (never fall back to 'N/A' if we have stored data)
-          const storedDepartment = localStorage.getItem('userDepartment');
-          let departmentValue = storedDepartment; // Default to stored value
-          
-          // Try to get department from API response
-          const apiDept = employeeDataFromAPI?.workInfo?.department;
-          if (apiDept) {
-            // Handle both object format { name: 'Development' } and string format 'Development'
-            if (typeof apiDept === 'object' && apiDept.name) {
-              departmentValue = apiDept.name;
-            } else if (typeof apiDept === 'string') {
-              departmentValue = apiDept;
-            }
-          }
-          
-          // Final fallback
-          if (!departmentValue) {
-            departmentValue = 'N/A';
-          }
-
-          // Determine the final department value to use
-          // NEVER downgrade from a valid localStorage value to 'N/A'
-          let finalDepartmentValue = departmentValue;
-          if (!departmentValue || departmentValue === 'N/A') {
-            const storedDept = localStorage.getItem('userDepartment');
-            if (storedDept && storedDept !== 'N/A') {
-              finalDepartmentValue = storedDept;
-            }
-          }
-
-          // Combine user and employee data
-          const combinedData = {
-            personalInfo: {
-              firstName: employeeDataFromAPI?.personalInfo?.firstName || userData.name?.split(' ')[0] || 'Unknown',
-              lastName: employeeDataFromAPI?.personalInfo?.lastName || userData.name?.split(' ')[1] || 'User',
-            },
-            workInfo: {
-              position: employeeDataFromAPI?.workInfo?.position || 'Employee',
-              department: finalDepartmentValue,
-            },
-            employeeId: userData.employeeId || employeeDataFromAPI?.employeeId || 'N/A',
-            contactInfo: {
-              personalEmail: userData.email || employeeDataFromAPI?.contactInfo?.personalEmail || localStorage.getItem("userEmail") || 'user@company.com',
-            },
-            user: userData,
-          };
-
-          // Update stable department FIRST before setting employee data
-          // This ensures sidebar has the right department when it re-renders
-          if (finalDepartmentValue && finalDepartmentValue !== 'N/A') {
-            stableDepartmentRef.current = finalDepartmentValue;
-            setStableDepartment(finalDepartmentValue);
-            localStorage.setItem('userDepartment', finalDepartmentValue);
-          }
-          
-          setFetchedEmployeeData(combinedData);
-
-          // Update localStorage with fresh data
-          if (userData.name) localStorage.setItem('userName', userData.name);
-          if (userData.email) localStorage.setItem('userEmail', userData.email);
-          if (userData.employeeId) localStorage.setItem('employeeId', userData.employeeId);
-        }
-        
-        hasFetchedRef.current = true;
-      } catch (error) {
-        console.error('Error fetching employee data in layout:', error);
-        // Only set fallback if we don't already have data
-        if (!fetchedEmployeeData) {
-          setFetchedEmployeeData({
-            personalInfo: {
-              firstName: localStorage.getItem('userName')?.split(' ')[0] || 'Unknown',
-              lastName: localStorage.getItem('userName')?.split(' ')[1] || 'User',
-            },
-            workInfo: {
-              position: 'Employee',
-              department: localStorage.getItem('userDepartment') || 'N/A',
-            },
-            employeeId: localStorage.getItem('employeeId') || 'N/A',
-            contactInfo: {
-              personalEmail: localStorage.getItem("userEmail") || 'user@company.com',
-            },
-          });
-        }
-        hasFetchedRef.current = true;
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchEmployeeData();
-  }, []); // Empty dependency array - only run once on mount
-
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -244,18 +72,18 @@ const EmployeeLayout = ({ children, employeeData }) => {
     };
   }, []);
 
-// Navigation catalog keyed for reuse in department-based filtering
-const NAV_CATALOG = {
-  dashboard: { name: "Dashboard", icon: LayoutDashboard, path: "/employee/dashboard" },
-  attendance: { name: "Attendance", icon: Clock, path: "/employee/attendance" },
-  leaves: { name: "Leave Requests", icon: Calendar, path: "/employee/leaves" },
-  tasks: { name: "Tasks", icon: FileText, path: "/employee/tasks" },
-  problems: { name: "Problem Statement", icon: AlertCircle, path: "/employee/problems" },
-  sales: { name: "Sales", icon: TrendingUp, path: "/employee/sales" },
-};
+  // Navigation catalog keyed for reuse in department-based filtering
+  const NAV_CATALOG = {
+    dashboard: { name: "Dashboard", icon: LayoutDashboard, path: "/employee/dashboard" },
+    attendance: { name: "Attendance", icon: Clock, path: "/employee/attendance" },
+    leaves: { name: "Leave Requests", icon: Calendar, path: "/employee/leaves" },
+    tasks: { name: "Tasks", icon: FileText, path: "/employee/tasks" },
+    problems: { name: "Problem Statement", icon: AlertCircle, path: "/employee/problems" },
+    sales: { name: "Sales", icon: TrendingUp, path: "/employee/sales" },
+  };
 
-  // Use fetched data, passed employeeData prop, or fallback
-  const emp = fetchedEmployeeData || employeeData || {
+  // Use context data or fallback
+  const emp = contextEmployeeData || {
     personalInfo: { firstName: "Unknown", lastName: "User" },
     workInfo: { position: "Employee", department: "N/A" },
     employeeId: "N/A",
@@ -264,19 +92,8 @@ const NAV_CATALOG = {
     },
   };
 
-  // Pick nav items based on STABLE department (doesn't reset on navigation)
-  // Priority: stableDepartment > emp.workInfo.department > localStorage
-  // This ensures we always get the most reliable department value
-  const getDepartmentValue = () => {
-    if (stableDepartment && stableDepartment !== 'N/A') return stableDepartment;
-    if (emp.workInfo?.department?.name) return emp.workInfo.department.name;
-    if (emp.workInfo?.department && typeof emp.workInfo.department === 'string') return emp.workInfo.department;
-    // Final fallback to localStorage directly
-    return localStorage.getItem('userDepartment') || 'N/A';
-  };
-  
-  const deptKey = normalizeDepartment(getDepartmentValue());
-  const allowedKeys = allowedKeysForDepartment(deptKey);
+  // Use normalized department from context (persists across navigation)
+  const allowedKeys = allowedKeysForDepartment(normalizedDepartment);
   const sidebarItems = allowedKeys.map((key) => NAV_CATALOG[key]).filter(Boolean);
 
   const handleLogout = () => {
