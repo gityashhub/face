@@ -61,9 +61,21 @@ const EmployeeLayout = ({ children, employeeData }) => {
   const [loading, setLoading] = useState(!employeeData && !getInitialEmployeeData());
   
   // Use a ref to store stable department value that doesn't reset on navigation
-  const stableDepartmentRef = useRef(getStoredDepartment());
-  const [stableDepartment, setStableDepartment] = useState(getStoredDepartment());
+  // Initialize with current localStorage value (may be updated from login)
+  const initialDept = getStoredDepartment();
+  const stableDepartmentRef = useRef(initialDept);
+  const [stableDepartment, setStableDepartment] = useState(initialDept);
   const hasFetchedRef = useRef(false);
+  
+  // Sync stableDepartment with localStorage on mount and when it changes
+  // This ensures we pick up the department stored during login
+  useEffect(() => {
+    const currentDept = getStoredDepartment();
+    if (currentDept && currentDept !== 'N/A' && currentDept !== stableDepartment) {
+      stableDepartmentRef.current = currentDept;
+      setStableDepartment(currentDept);
+    }
+  }, []);
   const [notifications, setNotifications] = useState([
     {
       id: 1,
@@ -242,10 +254,17 @@ const NAV_CATALOG = {
   };
 
   // Pick nav items based on STABLE department (doesn't reset on navigation)
-  // Use stableDepartment state which is initialized from localStorage and only updated on successful API fetch
-  const deptKey = normalizeDepartment(
-    stableDepartment || emp.workInfo?.department?.name || emp.workInfo?.department
-  );
+  // Priority: stableDepartment > emp.workInfo.department > localStorage
+  // This ensures we always get the most reliable department value
+  const getDepartmentValue = () => {
+    if (stableDepartment && stableDepartment !== 'N/A') return stableDepartment;
+    if (emp.workInfo?.department?.name) return emp.workInfo.department.name;
+    if (emp.workInfo?.department && typeof emp.workInfo.department === 'string') return emp.workInfo.department;
+    // Final fallback to localStorage directly
+    return localStorage.getItem('userDepartment') || 'N/A';
+  };
+  
+  const deptKey = normalizeDepartment(getDepartmentValue());
   const allowedKeys = allowedKeysForDepartment(deptKey);
   const sidebarItems = allowedKeys.map((key) => NAV_CATALOG[key]).filter(Boolean);
 
