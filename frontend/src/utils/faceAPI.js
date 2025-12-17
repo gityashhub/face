@@ -36,7 +36,7 @@ export const faceAPI = {
       return await api.post('/face-detection/analyze-frame-base64', {
         image: imageBase64
       }, {
-        timeout: 30000, // 30 second timeout for face analysis
+        timeout: 60000, // 60 second timeout for face analysis (account for server cold starts)
         headers: {
           'Content-Type': 'application/json'
         }
@@ -66,7 +66,7 @@ export const faceAPI = {
 
       return await api.post('/face-detection/verify-attendance', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 30000 // 30 second timeout
+        timeout: 60000 // 60 second timeout (account for server cold starts)
       });
     } catch (error) {
       console.error('Error verifying face:', error);

@@ -70,3 +70,5 @@
 [x] 34. Fixed EmployeeLeaveRequests.jsx - Changed from bare axios to configured api instance
 [x] 35. Fixed Socket.IO connection URL - Now uses VITE_SOCKET_URL environment variable for production
 [x] 36. Socket defaults to https://face-votd.onrender.com in production
+[x] 37. Increased API timeout from 30s to 60s in utils/api.js (for Render cold starts)
+[x] 38. Increased face detection timeout from 30s to 60s in faceAPI.js
