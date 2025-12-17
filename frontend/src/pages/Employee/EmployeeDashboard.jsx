@@ -348,7 +348,8 @@ const EmployeeDashboard = () => {
   useEffect(() => {
     // Open a single shared socket for any chat experience (1:1, bot, or group)
     if ((showChatModal || showBotModal || showGroupChatModal) && employeeData && !socketRef.current) {
-      const socket = io('/employee', {
+      const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://face-votd.onrender.com';
+      const socket = io(`${SOCKET_URL}/employee`, {
         auth: { token: localStorage.getItem('token') },
         transports: ['websocket', 'polling'],
         reconnection: true,

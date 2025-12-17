@@ -64,3 +64,9 @@
 [x] 31. Updated api/index.js with Render backend URL fallback
 [x] 32. Verified all API files point to https://face-votd.onrender.com/api
 [x] 33. Created netlify.toml for SPA routing on Netlify deployment
+
+## Production Deployment Fixes (Session 6)
+
+[x] 34. Fixed EmployeeLeaveRequests.jsx - Changed from bare axios to configured api instance
+[x] 35. Fixed Socket.IO connection URL - Now uses VITE_SOCKET_URL environment variable for production
+[x] 36. Socket defaults to https://face-votd.onrender.com in production
