@@ -162,7 +162,10 @@ const EmployeeManagement = () => {
                          position.includes(searchTerm.toLowerCase()) ||
                          employeeId.includes(searchTerm.toLowerCase());
     
-    const matchesDepartment = !filterDepartment || emp.workInfo?.department === filterDepartment;
+    const empDepartment = typeof emp.workInfo?.department === 'object' 
+      ? (emp.workInfo.department?._id || emp.workInfo.department?.name)
+      : emp.workInfo?.department;
+    const matchesDepartment = !filterDepartment || empDepartment === filterDepartment;
     return matchesSearch && matchesDepartment;
   });
 
@@ -760,7 +763,7 @@ const EmployeeManagement = () => {
               <div>
                 <h3 className="text-xl font-bold text-white">{selectedEmployee.fullName}</h3>
                 <p className="text-neon-pink">{selectedEmployee.workInfo?.position}</p>
-                <p className="text-secondary-400">{selectedEmployee.workInfo?.department}</p>
+                <p className="text-secondary-400">{typeof selectedEmployee.workInfo?.department === 'object' ? selectedEmployee.workInfo.department?.name : selectedEmployee.workInfo?.department}</p>
                 <p className="text-secondary-400 text-sm">ID: {selectedEmployee.employeeId || selectedEmployee.user?.employeeId}</p>
                 {selectedEmployee.hasFaceRegistered && (
                   <span className="inline-block px-2 py-1 text-xs rounded-full bg-green-400/20 text-green-400 mt-1">
@@ -958,7 +961,7 @@ const EmployeeManagement = () => {
                     <td className="p-6 text-white">{employee.workInfo?.position}</td>
                     <td className="p-6">
                       <span className="px-3 py-1 text-xs rounded-full bg-secondary-700 text-secondary-300">
-                        {employee.workInfo?.department}
+                        {typeof employee.workInfo?.department === 'object' ? employee.workInfo.department?.name : employee.workInfo?.department}
                       </span>
                     </td>
                     <td className="p-6">

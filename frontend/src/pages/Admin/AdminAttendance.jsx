@@ -388,7 +388,7 @@ const AdminAttendance = () => {
                               record.userData?.name || 'Unknown'}
                           </p>
                           <p className="text-xs text-secondary-400 truncate">
-                            ID: {record.userData?.employeeId || 'N/A'} • {record.employeeData?.workInfo?.department || 'N/A'}
+                            ID: {record.userData?.employeeId || 'N/A'} • {typeof record.employeeData?.workInfo?.department === 'object' ? record.employeeData.workInfo.department?.name : record.employeeData?.workInfo?.department || 'N/A'}
                           </p>
                         </div>
                       </div>
@@ -508,7 +508,7 @@ const AdminAttendance = () => {
                                     record.userData?.name || 'Unknown'}
                                 </p>
                                 <p className="text-xs text-secondary-400">
-                                  ID: {record.userData?.employeeId || 'N/A'} • {record.employeeData?.workInfo?.department || 'N/A'}
+                                  ID: {record.userData?.employeeId || 'N/A'} • {typeof record.employeeData?.workInfo?.department === 'object' ? record.employeeData.workInfo.department?.name : record.employeeData?.workInfo?.department || 'N/A'}
                                 </p>
                               </div>
                             </div>

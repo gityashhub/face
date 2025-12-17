@@ -1,0 +1,200 @@
+After implementing department-based dashboards, the system is partially broken.
+Login succeeds and department data is available, but:
+
+Employee dashboard crashes with React rendering errors
+
+Department-specific modules are NOT rendering at all
+
+Only common modules are visible for every employee, regardless of department
+
+✅ Verified Working Parts
+
+Login is successful
+
+JWT token is correctly generated and stored:
+
+sessionStorage ✅
+
+localStorage ✅
+
+Employee department is correctly identified:
+
+User Department: BDE
+
+
+API requests and responses are working (no auth failures)
+
+❌ Current Errors (Critical)
+1️⃣ React Rendering Error
+
+Repeated runtime error:
+
+Uncaught Error: Objects are not valid as a React child
+(found: object with keys {_id, name, code, description})
+
+
+📍 Error occurs inside:
+
+<EmployeeLayout />
+
+<EmployeeDashboard />
+
+<p> and <span> elements
+
+🔍 Meaning:
+
+A department object (or similar object) is being rendered directly in JSX
+
+React expects a string, number, or array, not a raw object
+
+2️⃣ UI Behavior Is Incorrect
+
+Currently, every employee sees only:
+
+Dashboard
+
+Attendance
+
+Leave Requests
+
+❌ Missing modules:
+
+BDE → Sales is NOT visible
+
+Developer → Tasks & Problem Statements are NOT visible
+
+Designing → Tasks are NOT visible
+
+This indicates:
+
+Department-based conditional rendering logic is broken or not executing
+
+Sidebar/menu logic is likely failing due to the rendering error above
+
+3️⃣ Additional Error
+Location error: Location request timed out
+
+
+📌 This error should be:
+
+Handled gracefully
+
+Must NOT block dashboard rendering
+
+🎯 Expected Correct Behavior (Must Implement)
+🔹 Common Modules (ALL Employees)
+
+Always visible:
+
+Dashboard
+
+Attendance
+
+Leave Requests
+
+🔹 Department-Based Modules (STRICT)
+BDE Department
+
+Must see:
+
+Sales
+
+Must NOT see:
+
+Tasks
+
+Problem Statements
+
+Developer Department
+
+Must see:
+
+Tasks
+
+Problem Statements
+
+Must NOT see:
+
+Sales
+
+Designing Department
+
+Must see:
+
+Tasks
+
+Must NOT see:
+
+Sales
+
+Problem Statements
+
+🛠️ Mandatory Fixes Required
+1️⃣ Fix React Rendering Crash
+
+Identify where an object (department, role, or config) is being rendered
+
+Replace with:
+
+department.name
+
+or department.code
+
+or map over an array properly
+
+Ensure no raw object is rendered inside JSX
+
+2️⃣ Fix Sidebar & Route Logic
+
+Sidebar must be rendered based on:
+
+employee.department.code
+
+
+Use explicit conditions, not truthy checks
+
+Example:
+
+if (department === 'BDE') showSales = true
+
+3️⃣ Fix Department-Based Module Visibility
+
+Ensure:
+
+Department value is correctly stored in auth context / redux / state
+
+Sidebar and routes consume the same source of truth
+
+Do NOT rely only on token decoding in random components
+
+4️⃣ Backend Validation (Required)
+
+Protect APIs so employees cannot access modules outside their department
+
+Frontend hiding alone is NOT sufficient
+
+5️⃣ Error Handling Improvements
+
+Add fallback UI for:
+
+Location permission timeout
+
+Prevent dashboard crash due to non-critical errors
+
+📦 Final Deliverable
+
+A stable, production-ready employee dashboard where:
+
+No React rendering errors occur
+
+Department-specific modules render correctly
+
+BDE sees Sales
+
+Developer sees Tasks & Problem Statements
+
+Designing sees Tasks
+
+Common modules remain visible to all
+
+Unauthorized modules are fully blocked

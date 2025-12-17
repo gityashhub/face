@@ -697,7 +697,10 @@ const EmployeeDashboard = () => {
     `${employeeData.personalInfo.firstName} ${employeeData.personalInfo.lastName}` : 
     employeeData?.fullName || 'Employee';
   const displayPosition = employeeData?.workInfo?.position || 'Employee';
-  const displayDepartment = employeeData?.workInfo?.department || 'General';
+  const rawDepartment = employeeData?.workInfo?.department;
+  const displayDepartment = typeof rawDepartment === 'object' && rawDepartment !== null 
+    ? (rawDepartment.name || rawDepartment.code || 'General')
+    : (rawDepartment || 'General');
   const displayEmployeeId = employeeData?.employeeId || employeeData?.user?.employeeId || 'N/A';
 
   const handleCloseChatModal = () => {
