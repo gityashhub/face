@@ -297,13 +297,16 @@ export const updateWonLead = async (req, res) => {
 // Get all leads (with filters for sales employees)
 export const getLeads = async (req, res) => {
   try {
-    const { page = 1, limit = 20, status, priority, source, search } = req.query;
+    const { page = 1, limit = 20, status, priority, source, search, includeAll } = req.query;
 
     let query = {};
 
     // If user is employee (sales), only show their assigned leads
     if (req.user.role === 'employee') {
-      const employee = await Employee.findOne({ user: req.user.id });
+      const employee = await Employee.findOne({ user: req.user.id }).populate(
+        'workInfo.department',
+        'name code'
+      );
       if (!employee) {
         return res.status(404).json({
           success: false,
@@ -318,6 +321,7 @@ export const getLeads = async (req, res) => {
       }
       query.assignedTo = employee._id;
     }
+    // For admin/manager, if includeAll is true, don't filter by assignedTo
 
     // Apply filters
     if (status && status !== 'all') {
@@ -1063,6 +1067,104 @@ export const deleteLead = async (req, res) => {
 
   } catch (error) {
     console.error('Delete lead error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// Reassign lead to a different BDE employee (Admin only)
+export const reassignLead = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Admin only.'
+      });
+    }
+
+    const { assignedTo } = req.body;
+    if (!assignedTo) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please specify an employee to assign this lead to'
+      });
+    }
+
+    const lead = await Lead.findById(req.params.id);
+    if (!lead) {
+      return res.status(404).json({
+        success: false,
+        message: 'Lead not found'
+      });
+    }
+
+    const newEmployee = await Employee.findById(assignedTo).populate(
+      'workInfo.department',
+      'name code'
+    );
+    if (!newEmployee) {
+      return res.status(404).json({
+        success: false,
+        message: 'Employee not found'
+      });
+    }
+
+    if (!isDepartmentAllowed(newEmployee.workInfo?.department, BDE_DEPARTMENTS)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Can only assign leads to BDE department employees'
+      });
+    }
+
+    lead.assignedTo = assignedTo;
+    lead.assignedBy = req.user.id;
+    await lead.save();
+
+    await lead.populate('assignedTo', 'personalInfo.firstName personalInfo.lastName employeeId');
+
+    res.json({
+      success: true,
+      message: 'Lead reassigned successfully',
+      data: lead
+    });
+
+  } catch (error) {
+    console.error('Reassign lead error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// Get all BDE department employees (for reassign dropdown)
+export const getBDEEmployees = async (req, res) => {
+  try {
+    const employees = await Employee.find({
+      'employmentInfo.status': 'Active'
+    }).populate('workInfo.department', 'name code');
+
+    const bdeEmployees = employees.filter(emp => 
+      isDepartmentAllowed(emp.workInfo?.department, BDE_DEPARTMENTS)
+    );
+
+    res.json({
+      success: true,
+      data: bdeEmployees.map(emp => ({
+        _id: emp._id,
+        employeeId: emp.employeeId,
+        personalInfo: {
+          firstName: emp.personalInfo?.firstName,
+          lastName: emp.personalInfo?.lastName
+        },
+        department: emp.workInfo?.department?.name || emp.workInfo?.department?.code
+      }))
+    });
+
+  } catch (error) {
+    console.error('Get BDE employees error:', error);
     res.status(500).json({
       success: false,
       message: error.message

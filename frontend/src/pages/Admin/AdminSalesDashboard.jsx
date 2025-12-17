@@ -25,8 +25,21 @@ const AdminSalesDashboard = () => {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [showReassignModal, setShowReassignModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
   const [selectedLead, setSelectedLead] = useState(null);
   const [reassignTo, setReassignTo] = useState('');
+
+  // Fetch BDE employees for reassign dropdown
+  const fetchBDEEmployees = async () => {
+    try {
+      const res = await leadAPI.getBDEEmployees();
+      if (res.data.success) {
+        setEmployees(res.data.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch BDE employees:', err);
+    }
+  };
 
   // Fetch data
   const fetchData = async () => {
@@ -40,7 +53,6 @@ const AdminSalesDashboard = () => {
       const fetchedLeads = leadsRes.data.success ? leadsRes.data.data.leads || [] : [];
       if (leadsRes.data.success) setLeads(fetchedLeads);
       if (summaryRes.data.success) setSummary(summaryRes.data.data);
-      // Mock funnel data and employees for now
       setFunnelData([
         { name: 'New', count: fetchedLeads.filter(l => l.status === 'New').length },
         { name: 'Contacted', count: fetchedLeads.filter(l => l.status === 'Contacted').length },
@@ -49,7 +61,6 @@ const AdminSalesDashboard = () => {
         { name: 'Negotiation', count: fetchedLeads.filter(l => l.status === 'Negotiation').length },
         { name: 'Won', count: fetchedLeads.filter(l => l.status === 'Won').length }
       ]);
-      setEmployees([]); // Empty for now
     } catch (err) {
       console.error('Failed to load sales data:', err);
       toast.error('Failed to load sales dashboard');
@@ -57,6 +68,11 @@ const AdminSalesDashboard = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchData();
+    fetchBDEEmployees();
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -369,7 +385,10 @@ const AdminSalesDashboard = () => {
                         <td className="p-2 sm:p-3">
                           <div className="flex items-center gap-1">
                             <button
-                              onClick={() => {/* View modal */}}
+                              onClick={() => {
+                                setSelectedLead(lead);
+                                setShowViewModal(true);
+                              }}
                               className="p-1 text-secondary-400 hover:text-blue-400"
                             >
                               <Eye className="w-2.5 h-2.5" />
@@ -426,7 +445,10 @@ const AdminSalesDashboard = () => {
                       </div>
                       <div className="flex gap-1">
                         <button
-                          onClick={() => {/* View modal */}}
+                          onClick={() => {
+                            setSelectedLead(lead);
+                            setShowViewModal(true);
+                          }}
                           className="p-2 text-secondary-400 hover:text-blue-400"
                         >
                           <Eye className="w-4 h-4" />
@@ -497,14 +519,15 @@ const AdminSalesDashboard = () => {
               <option value="">Select Sales Rep</option>
               {employees.map(emp => (
                 <option key={emp._id} value={emp._id}>
-                  {emp.personalInfo.firstName} {emp.personalInfo.lastName}
+                  {emp.personalInfo?.firstName} {emp.personalInfo?.lastName}
                 </option>
               ))}
             </select>
             <div className="flex gap-2">
               <button
                 onClick={handleReassign}
-                className="flex-1 px-3 py-2 bg-gradient-to-r from-neon-pink to-neon-purple text-white rounded-lg text-sm"
+                disabled={!reassignTo}
+                className="flex-1 px-3 py-2 bg-gradient-to-r from-neon-pink to-neon-purple text-white rounded-lg text-sm disabled:opacity-50"
               >
                 Reassign
               </button>
@@ -513,6 +536,109 @@ const AdminSalesDashboard = () => {
                 className="flex-1 px-3 py-2 bg-secondary-700 text-white rounded-lg text-sm"
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Lead Modal */}
+      {showViewModal && selectedLead && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="glass-morphism neon-border rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-xl font-bold text-white">Lead Details</h3>
+              <button
+                onClick={() => setShowViewModal(false)}
+                className="text-secondary-400 hover:text-white"
+              >
+                <XCircle className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <div>
+                  <p className="text-secondary-400 text-xs">Name</p>
+                  <p className="text-white font-medium">{selectedLead.firstName} {selectedLead.lastName}</p>
+                </div>
+                <div>
+                  <p className="text-secondary-400 text-xs">Email</p>
+                  <p className="text-white">{selectedLead.email || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-secondary-400 text-xs">Phone</p>
+                  <p className="text-white">{selectedLead.phone || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-secondary-400 text-xs">Company</p>
+                  <p className="text-white">{selectedLead.company || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-secondary-400 text-xs">Position</p>
+                  <p className="text-white">{selectedLead.position || '—'}</p>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <div>
+                  <p className="text-secondary-400 text-xs">Status</p>
+                  <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(selectedLead.status)}`}>
+                    {selectedLead.status}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-secondary-400 text-xs">Priority</p>
+                  <span className={`px-2 py-1 rounded-full text-xs ${getPriorityColor(selectedLead.priority)}`}>
+                    {selectedLead.priority || 'Medium'}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-secondary-400 text-xs">Estimated Value</p>
+                  <p className="text-neon-pink font-medium">{formatCurrency(selectedLead.estimatedValue)}</p>
+                </div>
+                <div>
+                  <p className="text-secondary-400 text-xs">Source</p>
+                  <p className="text-white">{selectedLead.source || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-secondary-400 text-xs">Assigned To</p>
+                  <p className="text-white">
+                    {selectedLead.assignedTo?.personalInfo
+                      ? `${selectedLead.assignedTo.personalInfo.firstName} ${selectedLead.assignedTo.personalInfo.lastName}`
+                      : 'Unassigned'}
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-4 pt-4 border-t border-secondary-700">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-secondary-400 text-xs">Next Follow-up</p>
+                  <p className="text-white">{formatDate(selectedLead.nextFollowUpDate)}</p>
+                </div>
+                <div>
+                  <p className="text-secondary-400 text-xs">Expected Close</p>
+                  <p className="text-white">{formatDate(selectedLead.expectedCloseDate)}</p>
+                </div>
+                <div>
+                  <p className="text-secondary-400 text-xs">Created</p>
+                  <p className="text-white">{formatDate(selectedLead.createdAt)}</p>
+                </div>
+                <div>
+                  <p className="text-secondary-400 text-xs">Lead ID</p>
+                  <p className="text-white">{selectedLead.leadId || selectedLead._id}</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => setShowViewModal(false)}
+                className="px-4 py-2 bg-secondary-700 hover:bg-secondary-600 text-white rounded-lg text-sm"
+              >
+                Close
               </button>
             </div>
           </div>

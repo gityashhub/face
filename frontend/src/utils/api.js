@@ -283,7 +283,20 @@ export const leadAPI = {
       params,
       responseType: 'blob' // For file download
     });
-  }}
+  },
+
+  // Reassign lead to different employee (Admin only)
+  reassignLead: (leadId, data) => {
+    console.log('Reassigning lead:', leadId, data);
+    return API.put(`/leads/${leadId}/reassign`, data);
+  },
+
+  // Get BDE employees for reassign dropdown
+  getBDEEmployees: () => {
+    console.log('Fetching BDE employees');
+    return API.get('/leads/bde-employees');
+  }
+}
 
 // Auth API calls
 export const authAPI = {

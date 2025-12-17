@@ -17,7 +17,9 @@ import {
   getMeetingStats,
   getUpcomingFollowUps,
   getOverdueFollowUps,
-  getUpcomingMeetings
+  getUpcomingMeetings,
+  reassignLead,
+  getBDEEmployees
 } from '../controllers/leadController.js';
 
 const router = express.Router();
@@ -414,6 +416,7 @@ router.use(requireDepartment(['bde', 'businessdevelopmentexecutive', 'sales', 'b
 router.get('/stats', getLeadStats);
 router.get('/won-stats', getWonLeadsStats);
 router.get('/meeting-stats', getMeetingStats);
+router.get('/bde-employees', getBDEEmployees);
 
 // Follow-up routes - MUST come before parameterized routes
 router.get('/upcoming-followups', getUpcomingFollowUps);
@@ -429,6 +432,7 @@ router.post('/', validateLead, createLead);
 // Lead-specific routes (parameterized routes come last)
 router.get('/:id', getLeadById);
 router.put('/:id', validateLeadUpdate, updateLead);
+router.put('/:id/reassign', reassignLead);
 router.delete('/:id', deleteLead);
 
 // Won lead management
