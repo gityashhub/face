@@ -22,13 +22,37 @@ import toast from "react-hot-toast";
 import { authAPI } from '../../../utils/api';
 import { allowedKeysForDepartment, normalizeDepartment } from '../../../utils/departmentAccess';
 
+const getInitialEmployeeData = () => {
+  const storedDepartment = localStorage.getItem('userDepartment');
+  const storedName = localStorage.getItem('userName');
+  const storedEmail = localStorage.getItem('userEmail');
+  const storedEmployeeId = localStorage.getItem('employeeId');
+  
+  if (storedDepartment || storedName || storedEmail) {
+    return {
+      personalInfo: {
+        firstName: storedName?.split(' ')[0] || 'Unknown',
+        lastName: storedName?.split(' ')[1] || 'User',
+      },
+      workInfo: {
+        position: 'Employee',
+        department: storedDepartment || 'N/A',
+      },
+      employeeId: storedEmployeeId || 'N/A',
+      contactInfo: {
+        personalEmail: storedEmail || 'user@company.com',
+      },
+    };
+  }
+  return null;
+};
+
 const EmployeeLayout = ({ children, employeeData }) => {
-  // 👈 Accept prop
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileDropdown, setProfileDropdown] = useState(false);
   const [notificationDropdown, setNotificationDropdown] = useState(false);
-  const [fetchedEmployeeData, setFetchedEmployeeData] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [fetchedEmployeeData, setFetchedEmployeeData] = useState(() => employeeData || getInitialEmployeeData());
+  const [loading, setLoading] = useState(!employeeData && !getInitialEmployeeData());
   const [notifications, setNotifications] = useState([
     {
       id: 1,
@@ -56,16 +80,25 @@ const EmployeeLayout = ({ children, employeeData }) => {
   const profileRef = useRef(null);
 
   // Fetch employee data on mount if not provided via props
+  // This runs in the background to get fresh data, but doesn't block the UI
   useEffect(() => {
     const fetchEmployeeData = async () => {
-      // If employeeData is already provided via props, don't fetch
+      // If employeeData is already provided via props, use it and don't fetch
       if (employeeData) {
         setFetchedEmployeeData(employeeData);
+        setLoading(false);
         return;
       }
 
-      try {
+      // Check if we have initial data from localStorage - don't show loading if we do
+      const hasInitialData = getInitialEmployeeData() !== null;
+      
+      // Only show loading spinner if we have no data at all
+      if (!hasInitialData && !fetchedEmployeeData) {
         setLoading(true);
+      }
+
+      try {
         const response = await authAPI.getProfile();
 
         if (response.data.success) {
@@ -91,28 +124,31 @@ const EmployeeLayout = ({ children, employeeData }) => {
 
           setFetchedEmployeeData(combinedData);
 
-          // Update localStorage with fresh data
+          // Update localStorage with fresh data including department
           if (userData.name) localStorage.setItem('userName', userData.name);
           if (userData.email) localStorage.setItem('userEmail', userData.email);
           if (userData.employeeId) localStorage.setItem('employeeId', userData.employeeId);
+          if (combinedData.workInfo?.department) localStorage.setItem('userDepartment', combinedData.workInfo.department);
         }
       } catch (error) {
         console.error('Error fetching employee data in layout:', error);
-        // Set fallback data from localStorage
-        setFetchedEmployeeData({
-          personalInfo: {
-            firstName: localStorage.getItem('userName')?.split(' ')[0] || 'Unknown',
-            lastName: localStorage.getItem('userName')?.split(' ')[1] || 'User',
-          },
-          workInfo: {
-            position: 'Employee',
-            department: localStorage.getItem('userDepartment') || 'N/A',
-          },
-          employeeId: localStorage.getItem('employeeId') || 'N/A',
-          contactInfo: {
-            personalEmail: localStorage.getItem("userEmail") || 'user@company.com',
-          },
-        });
+        // Only set fallback if we don't already have data
+        if (!fetchedEmployeeData) {
+          setFetchedEmployeeData({
+            personalInfo: {
+              firstName: localStorage.getItem('userName')?.split(' ')[0] || 'Unknown',
+              lastName: localStorage.getItem('userName')?.split(' ')[1] || 'User',
+            },
+            workInfo: {
+              position: 'Employee',
+              department: localStorage.getItem('userDepartment') || 'N/A',
+            },
+            employeeId: localStorage.getItem('employeeId') || 'N/A',
+            contactInfo: {
+              personalEmail: localStorage.getItem("userEmail") || 'user@company.com',
+            },
+          });
+        }
       } finally {
         setLoading(false);
       }
@@ -185,6 +221,17 @@ const NAV_CATALOG = {
   };
 
   const unreadNotifications = notifications.filter((n) => n.unread).length;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-secondary-900 via-secondary-800 to-secondary-900">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-12 h-12 border-4 border-neon-pink border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-secondary-400 text-sm">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex bg-gradient-to-br from-secondary-900 via-secondary-800 to-secondary-900 relative">
