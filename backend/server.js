@@ -144,7 +144,14 @@ const startServer = async () => {
     // Initialize Socket.IO
     const io = new SocketIOServer(httpServer, {
       cors: {
-        origin: true,
+        origin: (origin, callback) => {
+          if (!origin) return callback(null, true);
+          if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.netlify.app')) {
+            callback(null, true);
+          } else {
+            callback(new Error('Not allowed by CORS'));
+          }
+        },
         methods: ['GET', 'POST'],
         credentials: true
       }
