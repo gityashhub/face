@@ -346,7 +346,8 @@ const EmployeeDashboard = () => {
   };
 
   useEffect(() => {
-    if ((showChatModal || showBotModal) && employeeData && !socketRef.current) {
+    // Open a single shared socket for any chat experience (1:1, bot, or group)
+    if ((showChatModal || showBotModal || showGroupChatModal) && employeeData && !socketRef.current) {
       const socket = io('/employee', {
         auth: { token: localStorage.getItem('token') },
         transports: ['websocket', 'polling'],
@@ -464,11 +465,11 @@ const EmployeeDashboard = () => {
       };
     }
 
-    if (!showChatModal && !showBotModal && socketRef.current) {
+    if (!showChatModal && !showBotModal && !showGroupChatModal && socketRef.current) {
       socketRef.current.disconnect();
       socketRef.current = null;
     }
-  }, [showChatModal, showBotModal, employeeData]);
+  }, [showChatModal, showBotModal, showGroupChatModal, employeeData]);
 
   useEffect(() => {
     if (showChatModal && employeeData) {

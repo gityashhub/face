@@ -3,6 +3,9 @@ import Lead from '../models/Lead.js';
 import Employee from '../models/Employee.js';
 import { validationResult } from 'express-validator';
 import { sendEmail } from '../utils/email.js';
+import { isDepartmentAllowed } from '../middleware/departmentAccess.js';
+
+const BDE_DEPARTMENTS = ['bde', 'businessdevelopmentexecutive', 'sales', 'businessdevelopment'];
 
 // Create new lead - ENHANCED ERROR HANDLING
 export const createLead = async (req, res) => {
@@ -28,12 +31,21 @@ export const createLead = async (req, res) => {
 
     // If employee is creating lead, assign to themselves
     if (req.user.role === 'employee') {
-      const employee = await Employee.findOne({ user: req.user.id });
+      const employee = await Employee.findOne({ user: req.user.id }).populate(
+        'workInfo.department',
+        'name code'
+      );
       if (!employee) {
         console.log('Employee not found for user:', req.user.id);
         return res.status(404).json({
           success: false,
           message: 'Employee record not found'
+        });
+      }
+      if (!isDepartmentAllowed(employee.workInfo?.department, BDE_DEPARTMENTS)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Sales module is only available for BDE department'
         });
       }
       leadData.assignedTo = employee._id;
@@ -52,6 +64,25 @@ export const createLead = async (req, res) => {
           });
         }
       }
+    }
+
+    // Validate assigned employee belongs to BDE
+    const assignedEmployee = await Employee.findById(leadData.assignedTo).populate(
+      'workInfo.department',
+      'name code'
+    );
+    if (!assignedEmployee) {
+      return res.status(400).json({
+        success: false,
+        message: 'Assigned employee not found'
+      });
+    }
+
+    if (!isDepartmentAllowed(assignedEmployee.workInfo?.department, BDE_DEPARTMENTS)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only BDE department employees can own leads'
+      });
     }
 
     // Set assignedBy
@@ -187,7 +218,10 @@ export const updateWonLead = async (req, res) => {
 
     // Check permissions for employee
     if (req.user.role === 'employee') {
-      const employee = await Employee.findOne({ user: req.user.id });
+      const employee = await Employee.findOne({ user: req.user.id }).populate(
+        'workInfo.department',
+        'name code'
+      );
       if (!employee || lead.assignedTo.toString() !== employee._id.toString()) {
         return res.status(403).json({
           success: false,
@@ -263,6 +297,12 @@ export const getLeads = async (req, res) => {
         return res.status(404).json({
           success: false,
           message: 'Employee record not found'
+        });
+      }
+      if (!isDepartmentAllowed(employee.workInfo?.department, BDE_DEPARTMENTS)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Sales module is only available for BDE department'
         });
       }
       query.assignedTo = employee._id;

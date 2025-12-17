@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { authAPI } from '../../../utils/api';
+import { allowedKeysForDepartment, normalizeDepartment } from '../../../utils/departmentAccess';
 
 const EmployeeLayout = ({ children, employeeData }) => {
   // 👈 Accept prop
@@ -137,15 +138,15 @@ const EmployeeLayout = ({ children, employeeData }) => {
     };
   }, []);
 
- // In EmployeeLayout.js
-const sidebarItems = [
-  { name: "Dashboard", icon: LayoutDashboard, path: "/employee/dashboard" },
-  { name: "Attendance", icon: Clock, path: "/employee/attendance" },
-  { name: "Leave Requests", icon: Calendar, path: "/employee/leaves" },
-  { name: "Tasks", icon: FileText, path: "/employee/tasks" },
-  { name: "Problem Statement", icon: AlertCircle, path: "/employee/problems" },
-  { name: "Sales", icon: TrendingUp, path: "/employee/sales" },
-];
+// Navigation catalog keyed for reuse in department-based filtering
+const NAV_CATALOG = {
+  dashboard: { name: "Dashboard", icon: LayoutDashboard, path: "/employee/dashboard" },
+  attendance: { name: "Attendance", icon: Clock, path: "/employee/attendance" },
+  leaves: { name: "Leave Requests", icon: Calendar, path: "/employee/leaves" },
+  tasks: { name: "Tasks", icon: FileText, path: "/employee/tasks" },
+  problems: { name: "Problem Statement", icon: AlertCircle, path: "/employee/problems" },
+  sales: { name: "Sales", icon: TrendingUp, path: "/employee/sales" },
+};
 
   // Use fetched data, passed employeeData prop, or fallback
   const emp = fetchedEmployeeData || employeeData || {
@@ -156,6 +157,13 @@ const sidebarItems = [
       personalEmail: localStorage.getItem("userEmail") || "user@company.com",
     },
   };
+
+  // Pick nav items based on department (fallback to full list if not matched)
+  const deptKey = normalizeDepartment(
+    emp.workInfo?.department?.name || emp.workInfo?.department
+  );
+  const allowedKeys = allowedKeysForDepartment(deptKey);
+  const sidebarItems = allowedKeys.map((key) => NAV_CATALOG[key]).filter(Boolean);
 
   const handleLogout = () => {
     localStorage.removeItem("userRole");

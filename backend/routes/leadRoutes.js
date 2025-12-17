@@ -1,6 +1,7 @@
 import express from 'express';
 import { body } from 'express-validator';
-import { protect } from '../middleware/authMiddleware.js';
+import { protect } from '../middleware/auth.js';
+import { requireDepartment } from '../middleware/departmentAccess.js';
 import {
   getLeads,
   getLeadById,
@@ -406,6 +407,8 @@ const validateNote = [
 
 // IMPORTANT: Apply protection middleware to all routes
 router.use(protect);
+// Employees must belong to BDE/Sales to access lead routes
+router.use(requireDepartment(['bde', 'businessdevelopmentexecutive', 'sales', 'businessdevelopment']));
 
 // Statistics routes - MUST come first before parameterized routes
 router.get('/stats', getLeadStats);

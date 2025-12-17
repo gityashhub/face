@@ -2,11 +2,14 @@
 import express from 'express';
 import Problem from '../models/Problem.js';
 import { protect } from '../middleware/auth.js';
+import { requireDepartment } from '../middleware/departmentAccess.js';
 
 const router = express.Router();
 
 // Apply auth middleware to all routes
 router.use(protect);
+// Only Developer department employees can access problem statements
+router.use(requireDepartment(['developer', 'development']));
 
 // GET all problems
 router.get('/', async (req, res) => {

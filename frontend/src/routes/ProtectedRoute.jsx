@@ -1,7 +1,9 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
+import { isModulePathAllowed, normalizeDepartment } from '../utils/departmentAccess';
 
 const ProtectedRoute = ({ children, role, requiredRole }) => {
+  const location = useLocation();
   const effectiveRole = role || requiredRole;
   
   const token = localStorage.getItem('token') || 
@@ -13,6 +15,27 @@ const ProtectedRoute = ({ children, role, requiredRole }) => {
 
   if (!token) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (userRole === 'employee') {
+    const storedDept =
+      localStorage.getItem('userDepartment') ||
+      sessionStorage.getItem('userDepartment');
+
+    let department = storedDept;
+    if (!department) {
+      try {
+        const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+        department = storedUser?.department?.name || storedUser?.department;
+      } catch (err) {
+        department = '';
+      }
+    }
+
+    const normalizedDept = normalizeDepartment(department);
+    if (!isModulePathAllowed(location.pathname, normalizedDept)) {
+      return <Navigate to="/employee/dashboard" replace />;
+    }
   }
 
   if (effectiveRole && userRole !== effectiveRole) {

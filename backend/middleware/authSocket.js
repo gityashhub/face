@@ -8,7 +8,9 @@ const authSocket = async (socket, next) => {
     if (!token) return next(new Error('Authentication error'));
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select('role fullName');
+    // Fetch enough fields to build a reliable display name for realtime events
+    const user = await User.findById(decoded.id)
+      .select('role name fullName email personalInfo');
     if (!user) return next(new Error('User not found'));
 
     socket.user = user;

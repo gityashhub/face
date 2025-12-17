@@ -196,8 +196,10 @@ const DepartmentManagement = () => {
                 <label className="block text-sm font-medium text-secondary-300 mb-2">Department Name *</label>
                 <input
                   type="text"
-                  value={newDepartment.name}
-                  onChange={(e) => setNewDepartment({...newDepartment, name: e.target.value})}
+                  defaultValue={newDepartment.name}
+                  onChange={(e) =>
+                    setNewDepartment((prev) => ({ ...prev, name: e.target.value }))
+                  }
                   className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
                   required
                 />
@@ -206,8 +208,13 @@ const DepartmentManagement = () => {
                 <label className="block text-sm font-medium text-secondary-300 mb-2">Department Code *</label>
                 <input
                   type="text"
-                  value={newDepartment.code}
-                  onChange={(e) => setNewDepartment({...newDepartment, code: e.target.value.toUpperCase()})}
+                  defaultValue={newDepartment.code}
+                  onChange={(e) =>
+                    setNewDepartment((prev) => ({
+                      ...prev,
+                      code: e.target.value.toUpperCase(),
+                    }))
+                  }
                   className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
                   placeholder="e.g., ENG, HR, MKT"
                   maxLength={5}
@@ -217,8 +224,13 @@ const DepartmentManagement = () => {
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-secondary-300 mb-2">Description</label>
                 <textarea
-                  value={newDepartment.description}
-                  onChange={(e) => setNewDepartment({...newDepartment, description: e.target.value})}
+                  defaultValue={newDepartment.description}
+                  onChange={(e) =>
+                    setNewDepartment((prev) => ({
+                      ...prev,
+                      description: e.target.value,
+                    }))
+                  }
                   rows={3}
                   className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
                   placeholder="Brief description of the department..."
@@ -228,8 +240,13 @@ const DepartmentManagement = () => {
                 <label className="block text-sm font-medium text-secondary-300 mb-2">Department Manager</label>
                 <input
                   type="text"
-                  value={newDepartment.manager}
-                  onChange={(e) => setNewDepartment({...newDepartment, manager: e.target.value})}
+                  defaultValue={newDepartment.manager}
+                  onChange={(e) =>
+                    setNewDepartment((prev) => ({
+                      ...prev,
+                      manager: e.target.value,
+                    }))
+                  }
                   className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
                   placeholder="Manager name"
                 />
@@ -238,8 +255,13 @@ const DepartmentManagement = () => {
                 <label className="block text-sm font-medium text-secondary-300 mb-2">Location</label>
                 <input
                   type="text"
-                  value={newDepartment.location}
-                  onChange={(e) => setNewDepartment({...newDepartment, location: e.target.value})}
+                  defaultValue={newDepartment.location}
+                  onChange={(e) =>
+                    setNewDepartment((prev) => ({
+                      ...prev,
+                      location: e.target.value,
+                    }))
+                  }
                   className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
                   placeholder="Office location"
                 />
@@ -248,8 +270,13 @@ const DepartmentManagement = () => {
                 <label className="block text-sm font-medium text-secondary-300 mb-2">Budget</label>
                 <input
                   type="number"
-                  value={newDepartment.budget}
-                  onChange={(e) => setNewDepartment({...newDepartment, budget: parseFloat(e.target.value) || 0})}
+                  defaultValue={newDepartment.budget}
+                  onChange={(e) =>
+                    setNewDepartment((prev) => ({
+                      ...prev,
+                      budget: parseFloat(e.target.value) || 0,
+                    }))
+                  }
                   className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
                   placeholder="0"
                   min="0"
@@ -258,8 +285,13 @@ const DepartmentManagement = () => {
               <div>
                 <label className="block text-sm font-medium text-secondary-300 mb-2">Status</label>
                 <select
-                  value={newDepartment.status}
-                  onChange={(e) => setNewDepartment({...newDepartment, status: e.target.value})}
+                  defaultValue={newDepartment.status}
+                  onChange={(e) =>
+                    setNewDepartment((prev) => ({
+                      ...prev,
+                      status: e.target.value,
+                    }))
+                  }
                   className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
                 >
                   {statusOptions.map(status => (
@@ -271,8 +303,13 @@ const DepartmentManagement = () => {
                 <label className="block text-sm font-medium text-secondary-300 mb-2">Established Date</label>
                 <input
                   type="date"
-                  value={newDepartment.establishedDate}
-                  onChange={(e) => setNewDepartment({...newDepartment, establishedDate: e.target.value})}
+                  defaultValue={newDepartment.establishedDate}
+                  onChange={(e) =>
+                    setNewDepartment((prev) => ({
+                      ...prev,
+                      establishedDate: e.target.value,
+                    }))
+                  }
                   className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
                 />
               </div>
@@ -296,7 +333,7 @@ const DepartmentManagement = () => {
               <div key={index} className="flex items-center space-x-2">
                 <input
                   type="text"
-                  value={goal}
+                  defaultValue={goal}
                   onChange={(e) => updateGoal(index, e.target.value)}
                   className="flex-1 px-4 py-2 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
                   placeholder={`Goal ${index + 1}`}
@@ -706,7 +743,227 @@ const DepartmentManagement = () => {
       </div>
 
       {/* Modals */}
-      {showAddModal && <AddDepartmentModal />}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 neon-border rounded-2xl p-4 sm:p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-white">Add New Department</h2>
+              <button
+                onClick={() => {
+                  resetForm();
+                  setShowAddModal(false);
+                }}
+                className="text-secondary-400 hover:text-white"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateDepartment} className="space-y-6">
+              <div className="space-y-4">
+                <h3 className="text-lg font-bold text-white border-b border-secondary-600 pb-2">
+                  Basic Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-secondary-300 mb-2">
+                      Department Name *
+                    </label>
+                    <input
+                      type="text"
+                      defaultValue={newDepartment.name}
+                      onChange={(e) =>
+                        setNewDepartment((prev) => ({ ...prev, name: e.target.value }))
+                      }
+                      className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-secondary-300 mb-2">
+                      Department Code *
+                    </label>
+                    <input
+                      type="text"
+                      defaultValue={newDepartment.code}
+                      onChange={(e) =>
+                        setNewDepartment((prev) => ({
+                          ...prev,
+                          code: e.target.value.toUpperCase(),
+                        }))
+                      }
+                      className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                      placeholder="e.g., ENG, HR, MKT"
+                      maxLength={5}
+                      required
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-secondary-300 mb-2">
+                      Description
+                    </label>
+                    <textarea
+                      defaultValue={newDepartment.description}
+                      onChange={(e) =>
+                        setNewDepartment((prev) => ({
+                          ...prev,
+                          description: e.target.value,
+                        }))
+                      }
+                      rows={3}
+                      className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                      placeholder="Brief description of the department..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-secondary-300 mb-2">
+                      Department Manager
+                    </label>
+                    <input
+                      type="text"
+                      defaultValue={newDepartment.manager}
+                      onChange={(e) =>
+                        setNewDepartment((prev) => ({
+                          ...prev,
+                          manager: e.target.value,
+                        }))
+                      }
+                      className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                      placeholder="Manager name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-secondary-300 mb-2">
+                      Location
+                    </label>
+                    <input
+                      type="text"
+                      defaultValue={newDepartment.location}
+                      onChange={(e) =>
+                        setNewDepartment((prev) => ({
+                          ...prev,
+                          location: e.target.value,
+                        }))
+                      }
+                      className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                      placeholder="Office location"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-secondary-300 mb-2">
+                      Budget
+                    </label>
+                    <input
+                      type="number"
+                      defaultValue={newDepartment.budget}
+                      onChange={(e) =>
+                        setNewDepartment((prev) => ({
+                          ...prev,
+                          budget: parseFloat(e.target.value) || 0,
+                        }))
+                      }
+                      className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                      placeholder="0"
+                      min="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-secondary-300 mb-2">
+                      Status
+                    </label>
+                    <select
+                      defaultValue={newDepartment.status}
+                      onChange={(e) =>
+                        setNewDepartment((prev) => ({
+                          ...prev,
+                          status: e.target.value,
+                        }))
+                      }
+                      className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                    >
+                      {statusOptions.map((status) => (
+                        <option key={status} value={status}>
+                          {status}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-secondary-300 mb-2">
+                      Established Date
+                    </label>
+                    <input
+                      type="date"
+                      defaultValue={newDepartment.establishedDate}
+                      onChange={(e) =>
+                        setNewDepartment((prev) => ({
+                          ...prev,
+                          establishedDate: e.target.value,
+                        }))
+                      }
+                      className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Goals Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-white border-b border-secondary-600 pb-2">
+                    Department Goals
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={addGoal}
+                    className="px-3 py-1 text-sm bg-neon-pink/20 text-neon-pink rounded-lg hover:bg-neon-pink/30 transition-colors"
+                    disabled={newDepartment.goals.length >= 5}
+                  >
+                    Add Goal
+                  </button>
+                </div>
+                {newDepartment.goals.map((goal, index) => (
+                  <div key={index} className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      defaultValue={goal}
+                      onChange={(e) => updateGoal(index, e.target.value)}
+                      className="flex-1 px-4 py-2 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
+                      placeholder={`Goal ${index + 1}`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeGoal(index)}
+                      className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-end space-x-4 pt-6 border-t border-secondary-600">
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetForm();
+                    setShowAddModal(false);
+                  }}
+                  className="px-6 py-3 border border-secondary-600 text-secondary-300 rounded-lg hover:bg-secondary-700/50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-3 bg-gradient-to-r from-neon-pink to-neon-purple text-white font-semibold rounded-lg hover-glow transition-all duration-300"
+                >
+                  Create Department
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       {showEditModal && <EditModal />}
       {showViewModal && <ViewModal />}
     </AdminLayout>

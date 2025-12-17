@@ -14,6 +14,7 @@ import {
   toggleSubtask
 } from '../controllers/taskController.js';
 import { protect } from '../middleware/auth.js';
+import { requireDepartment } from '../middleware/departmentAccess.js';
 
 const router = express.Router();
 
@@ -68,6 +69,8 @@ const statusValidation = [
 
 // Apply auth middleware to all routes
 router.use(protect);
+// Employees must belong to Developer or Designing to access task module
+router.use(requireDepartment(['developer', 'development', 'design', 'designing']));
 
 // Routes
 router.route('/')

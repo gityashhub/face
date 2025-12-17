@@ -37,7 +37,13 @@ const setupChatSocket = (io) => {
 
   employeeNamespace.on('connection', async (socket) => {
     const userId = socket.user._id.toString();
-    const userName = socket.user.fullName;
+    // Normalize a display name so realtime events (DM + group) always have a proper sender name
+    const userName =
+      socket.user.name ||
+      socket.user.fullName ||
+      (socket.user.personalInfo?.firstName && socket.user.personalInfo?.lastName
+        ? `${socket.user.personalInfo.firstName} ${socket.user.personalInfo.lastName}`
+        : socket.user.email || 'Unknown User');
     
     console.log(`Employee connected: ${userName} (${socket.id})`);
     
@@ -151,11 +157,12 @@ const setupChatSocket = (io) => {
         await messageDoc.save();
 
         const recipientSocketId = userSockets.get(to);
+        const senderDisplayName = userName; // normalized above
         if (recipientSocketId) {
           io.of('/employee').to(recipientSocketId).emit('message', {
             _id: messageDoc._id,
             from,
-            fromName: fromName || socket.user.fullName,
+            fromName: fromName || senderDisplayName,
             to,
             text: messageDoc.text,
             timestamp: messageDoc.timestamp,
@@ -168,7 +175,7 @@ const setupChatSocket = (io) => {
           _id: messageDoc._id,
           clientMessageId,
           from,
-          fromName: fromName || socket.user.fullName,
+          fromName: fromName || senderDisplayName,
           to,
           text: messageDoc.text,
           timestamp: messageDoc.timestamp,

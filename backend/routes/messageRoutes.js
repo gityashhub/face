@@ -92,8 +92,19 @@ router.post('/', async (req, res) => {
       text: text.trim()
     });
     await message.save();
-    
-    res.status(201).json({ success: true, data: message });
+    await message.populate('from', 'name email');
+
+    const responseData = {
+      _id: message._id,
+      from: message.from._id || message.from,
+      fromName: message.from?.name || 'Unknown',
+      to: message.to,
+      text: message.text,
+      timestamp: message.timestamp,
+      fromBot: message.fromBot || false
+    };
+
+    res.status(201).json({ success: true, data: responseData });
   } catch (error) {
     console.error('Failed to send message:', error);
     res.status(500).json({ success: false, message: 'Failed to send message' });

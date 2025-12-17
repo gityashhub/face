@@ -185,7 +185,8 @@ const getMe = async (req, res) => {
     // If user is an employee, get additional employee data
     if (user.role === 'employee') {
       const employee = await Employee.findOne({ user: user._id })
-        .populate('workInfo.reportingManager', 'personalInfo.firstName personalInfo.lastName');
+        .populate('workInfo.reportingManager', 'personalInfo.firstName personalInfo.lastName')
+        .populate('workInfo.department', 'name code description');
       
       if (employee) {
         userData = {
@@ -238,9 +239,10 @@ const getMe = async (req, res) => {
 const getMyProfile = async (req, res) => {
   try {
     // Find the employee record for the current user
-    const employee = await Employee.findOne({ user: req.user.id })
-      .populate('user', 'name email role employeeId isActive')
-      .populate('workInfo.reportingManager', 'personalInfo.firstName personalInfo.lastName');
+      const employee = await Employee.findOne({ user: req.user.id })
+        .populate('user', 'name email role employeeId isActive')
+        .populate('workInfo.reportingManager', 'personalInfo.firstName personalInfo.lastName')
+        .populate('workInfo.department', 'name code description');
 
     if (!employee) {
       return res.status(404).json({

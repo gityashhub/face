@@ -25,6 +25,7 @@ import toast from 'react-hot-toast';
 import { useTasks } from '../../hooks/useTasks';
 import { useAuth } from '../../hooks/useAuth';
 import { employeeAPI } from '../../utils/api'; // Use the same API as employee management
+import { normalizeDepartment } from '../../utils/departmentAccess';
 
 const AdminTaskManagement = () => {
 
@@ -66,6 +67,24 @@ const AdminTaskManagement = () => {
   const [projects] = useState(['E-commerce Platform', 'Mobile App', 'Bug Fixes', 'Website Redesign', 'API Integration']);
   const [employeesLoading, setEmployeesLoading] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
+
+  const DESIGN_DEPTS = ['design', 'designing'];
+  const DEV_DEPTS = ['developer', 'development'];
+
+  const getAssignableEmployees = (category) => {
+    const allowed = (category || '').toLowerCase().includes('design')
+      ? DESIGN_DEPTS
+      : DEV_DEPTS;
+
+    return employees.filter((emp) => {
+      const dept =
+        emp?.workInfo?.department?.name ||
+        emp?.workInfo?.department ||
+        emp?.department?.name ||
+        '';
+      return allowed.includes(normalizeDepartment(dept));
+    });
+  };
 
   // Fetch employees when component mounts using the same API as employee management
   const fetchEmployees = async () => {
@@ -536,7 +555,7 @@ const handleAddTask = async (e) => {
                     required
                   >
                     <option value="">Select Employee</option>
-                    {employees.map(emp => (
+                    {(getAssignableEmployees(isEdit ? selectedTask?.category : newTask.category)).map(emp => (
                       <option key={emp._id} value={emp._id}>
                         {emp.fullName || `${emp.personalInfo?.firstName} ${emp.personalInfo?.lastName}` || emp.user?.name || 'Unknown'} 
                         ({emp.employeeId || emp.user?.employeeId || 'N/A'})

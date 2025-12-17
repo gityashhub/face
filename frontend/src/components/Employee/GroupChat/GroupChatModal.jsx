@@ -121,6 +121,10 @@ const GroupChatModal = ({
       const response = await employeeAPI.get('/groups');
       if (response.data.success) {
         setGroups(response.data.data);
+        // Auto-select the first group so history and realtime events are visible immediately
+        if (!selectedGroup && response.data.data.length > 0) {
+          setSelectedGroup(response.data.data[0]);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch groups:', error);

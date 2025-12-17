@@ -3,6 +3,35 @@ import { validationResult } from 'express-validator';
 import Task from '../models/Task.js';
 import Employee from '../models/Employee.js';
 import User from '../models/User.js';
+import { isDepartmentAllowed } from '../middleware/departmentAccess.js';
+
+const TASK_ALLOWED_DEPTS = ['developer', 'development', 'design', 'designing'];
+const DESIGN_DEPTS = ['design', 'designing'];
+const DEV_DEPTS = ['developer', 'development'];
+
+const guardEmployeeTaskAccess = async (req, res, allowed = TASK_ALLOWED_DEPTS) => {
+  if (req.user.role !== 'employee') return { ok: true };
+
+  const employee = await Employee.findOne({ user: req.user.id }).populate(
+    'workInfo.department',
+    'name code'
+  );
+
+  if (!employee) {
+    res.status(404).json({ success: false, message: 'Employee record not found' });
+    return { ok: false };
+  }
+
+  if (!isDepartmentAllowed(employee.workInfo?.department, allowed)) {
+    res.status(403).json({
+      success: false,
+      message: 'Tasks module is not available for your department',
+    });
+    return { ok: false };
+  }
+
+  return { ok: true, employee };
+};
 
 // @desc    Create new task
 // @route   POST /api/tasks
@@ -28,20 +57,44 @@ export const createTask = async (req, res) => {
       });
     }
 
-    // Create the task
-    const taskData = {
-      title: req.body.title,
-      description: req.body.description,
-      assignedTo: req.body.assignedTo,
-      assignedBy: req.user.id,
-      project: req.body.project || '',
-      priority: req.body.priority || 'Medium',
-      dueDate: req.body.dueDate,
-      category: req.body.category || 'Other',
-      estimatedHours: req.body.estimatedHours || 0,
-      status: 'Not Started',
-      progress: 0
-    };
+  // Validate target employee department vs category
+  const targetEmployee = await Employee.findById(req.body.assignedTo).populate(
+    'workInfo.department',
+    'name code'
+  );
+  if (!targetEmployee) {
+    return res.status(400).json({
+      success: false,
+      message: 'Assigned employee not found',
+    });
+  }
+
+  const category = (req.body.category || 'Other').toLowerCase();
+  const allowedDepartmentsForCategory = category.includes('design')
+    ? DESIGN_DEPTS
+    : DEV_DEPTS;
+
+  if (!isDepartmentAllowed(targetEmployee.workInfo?.department, allowedDepartmentsForCategory)) {
+    return res.status(403).json({
+      success: false,
+      message: 'Cross-department assignment is not allowed for this task category',
+    });
+  }
+
+  // Create the task
+  const taskData = {
+    title: req.body.title,
+    description: req.body.description,
+    assignedTo: req.body.assignedTo,
+    assignedBy: req.user.id,
+    project: req.body.project || '',
+    priority: req.body.priority || 'Medium',
+    dueDate: req.body.dueDate,
+    category: req.body.category || 'Other',
+    estimatedHours: req.body.estimatedHours || 0,
+    status: 'Not Started',
+    progress: 0
+  };
 
     console.log('Creating task with data:', taskData);
 
@@ -100,31 +153,14 @@ export const getTasks = async (req, res) => {
 
     let query = {};
 
-    // Build query based on user role
-    if (req.user.role === 'employee') {
-      // Employees can only see their own tasks
-      const employee = await Employee.findOne({ user: req.user.id });
-      console.log('Employee lookup - User ID:', req.user.id);
-      console.log('Employee found:', employee);
-      
-      if (employee) {
-        query.assignedTo = employee._id;
-        console.log('Employee query filter:', query);
-      } else {
-        console.log('No employee record found for user:', req.user.id);
-        return res.json({
-          success: true,
-          tasks: [],
-          pagination: {
-            currentPage: parseInt(page),
-            totalPages: 0,
-            totalTasks: 0,
-            hasNext: false,
-            hasPrev: false
-          }
-        });
-      }
-    }
+  // Build query based on user role
+  const guard = await guardEmployeeTaskAccess(req, res);
+  if (!guard.ok) return;
+
+  if (req.user.role === 'employee') {
+    query.assignedTo = guard.employee._id;
+    console.log('Employee query filter:', query);
+  }
 
     // Apply other filters
     if (status) query.status = status;
@@ -202,6 +238,9 @@ export const getTasks = async (req, res) => {
 // @access  Private
 export const getTaskById = async (req, res) => {
   try {
+    const { ok, employee } = await guardEmployeeTaskAccess(req, res);
+    if (!ok) return;
+
     const task = await Task.findById(req.params.id)
       .populate([
         {
@@ -230,8 +269,7 @@ export const getTaskById = async (req, res) => {
 
     // Check permissions - employees can only view their own tasks
     if (req.user.role === 'employee') {
-      const employee = await Employee.findOne({ user: req.user.id });
-      if (!employee || task.assignedTo._id.toString() !== employee._id.toString()) {
+      if (task.assignedTo._id.toString() !== employee._id.toString()) {
         return res.status(403).json({
           success: false,
           message: 'Access denied'
@@ -258,6 +296,9 @@ export const getTaskById = async (req, res) => {
 // @access  Private
 export const updateTask = async (req, res) => {
   try {
+    const guard = await guardEmployeeTaskAccess(req, res);
+    if (!guard.ok) return;
+
     const task = await Task.findById(req.params.id);
 
     if (!task) {
@@ -269,8 +310,7 @@ export const updateTask = async (req, res) => {
 
     // Check permissions
     if (req.user.role === 'employee') {
-      const employee = await Employee.findOne({ user: req.user.id });
-      if (!employee || task.assignedTo.toString() !== employee._id.toString()) {
+      if (task.assignedTo.toString() !== guard.employee._id.toString()) {
         return res.status(403).json({
           success: false,
           message: 'Access denied'
@@ -365,6 +405,9 @@ export const deleteTask = async (req, res) => {
 // @access  Private
 export const addComment = async (req, res) => {
   try {
+    const { ok, employee } = await guardEmployeeTaskAccess(req, res);
+    if (!ok) return;
+
     const { text } = req.body;
 
     if (!text || !text.trim()) {
@@ -384,8 +427,7 @@ export const addComment = async (req, res) => {
 
     // Check permissions
     if (req.user.role === 'employee') {
-      const employee = await Employee.findOne({ user: req.user.id });
-      if (!employee || task.assignedTo.toString() !== employee._id.toString()) {
+      if (task.assignedTo.toString() !== employee._id.toString()) {
         return res.status(403).json({
           success: false,
           message: 'Access denied'
@@ -431,6 +473,9 @@ export const addComment = async (req, res) => {
 // @access  Private
 export const updateProgress = async (req, res) => {
   try {
+    const { ok, employee } = await guardEmployeeTaskAccess(req, res);
+    if (!ok) return;
+
     const { progress } = req.body;
 
     if (progress < 0 || progress > 100) {
@@ -450,8 +495,7 @@ export const updateProgress = async (req, res) => {
 
     // Check permissions
     if (req.user.role === 'employee') {
-      const employee = await Employee.findOne({ user: req.user.id });
-      if (!employee || task.assignedTo.toString() !== employee._id.toString()) {
+      if (task.assignedTo.toString() !== employee._id.toString()) {
         return res.status(403).json({
           success: false,
           message: 'Access denied'
@@ -492,6 +536,9 @@ export const updateProgress = async (req, res) => {
 // @access  Private
 export const changeStatus = async (req, res) => {
   try {
+    const { ok, employee } = await guardEmployeeTaskAccess(req, res);
+    if (!ok) return;
+
     const { status } = req.body;
 
     const validStatuses = ['Not Started', 'In Progress', 'Review', 'Completed', 'On Hold', 'Cancelled'];
@@ -512,8 +559,7 @@ export const changeStatus = async (req, res) => {
 
     // Check permissions
     if (req.user.role === 'employee') {
-      const employee = await Employee.findOne({ user: req.user.id });
-      if (!employee || task.assignedTo.toString() !== employee._id.toString()) {
+      if (task.assignedTo.toString() !== employee._id.toString()) {
         return res.status(403).json({
           success: false,
           message: 'Access denied'
@@ -556,12 +602,11 @@ export const getTaskStats = async (req, res) => {
   try {
     let query = {};
 
-    // If employee, only show their stats
+    // If employee, only show their stats (and only if department is allowed)
+    const guard = await guardEmployeeTaskAccess(req, res);
+    if (!guard.ok) return;
     if (req.user.role === 'employee') {
-      const employee = await Employee.findOne({ user: req.user.id });
-      if (employee) {
-        query.assignedTo = employee._id;
-      }
+      query.assignedTo = guard.employee._id;
     }
 
     const totalTasks = await Task.countDocuments(query);
@@ -620,6 +665,9 @@ export const getTaskStats = async (req, res) => {
 // @access  Private
 export const toggleSubtask = async (req, res) => {
   try {
+    const { ok, employee } = await guardEmployeeTaskAccess(req, res);
+    if (!ok) return;
+
     const { id: taskId, subtaskId } = req.params;
 
     const task = await Task.findById(taskId);
@@ -632,8 +680,7 @@ export const toggleSubtask = async (req, res) => {
 
     // Check permissions
     if (req.user.role === 'employee') {
-      const employee = await Employee.findOne({ user: req.user.id });
-      if (!employee || task.assignedTo.toString() !== employee._id.toString()) {
+      if (task.assignedTo.toString() !== employee._id.toString()) {
         return res.status(403).json({
           success: false,
           message: 'Access denied'
