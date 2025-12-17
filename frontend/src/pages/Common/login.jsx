@@ -42,7 +42,9 @@ const Login = () => {
         identifierType: isEmployeeId(loginData.email) ? 'Employee ID' : 'Email'
       });
 
-      const response = await axios.post('/api/auth/login', loginData);
+      // Use VITE_API_URL if available, otherwise fallback
+      const API_URL = import.meta.env.VITE_API_URL || 'https://face-votd.onrender.com/api';
+      const response = await axios.post(`${API_URL}/auth/login`, loginData);
 
       if (response.data.success) {
         // Extract department name - handle various response formats
