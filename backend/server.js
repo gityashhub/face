@@ -41,7 +41,7 @@ import groupRoutes from './routes/groupRoutes.js';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.BACKEND_PORT || 3001;
+const PORT = process.env.PORT || process.env.BACKEND_PORT || 3001;
 
 // ----------------- MIDDLEWARE -----------------
 

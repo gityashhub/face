@@ -219,12 +219,10 @@ export const updateWonLead = async (req, res) => {
       });
     }
 
-    // Check if lead is won
+    // Check if lead is won, if not mark it as won
     if (lead.status !== 'Won') {
-      return res.status(400).json({
-        success: false,
-        message: 'Only won leads can have their won details updated'
-      });
+      lead.status = 'Won';
+      lead.actualCloseDate = new Date();
     }
 
     // Check permissions for employee
