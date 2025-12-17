@@ -57,29 +57,36 @@ export const EmployeeProvider = ({ children }) => {
           const userData = response.data.data.user;
           const employeeDataFromAPI = response.data.data.employee;
 
+          // Extract department name - handle various response formats
+          // NEVER overwrite a valid department name with an ObjectId
           const storedDepartment = localStorage.getItem('userDepartment');
-          let departmentValue = storedDepartment;
+          let departmentValue = null;
           
           const apiDept = employeeDataFromAPI?.workInfo?.department;
+          console.log('Context - API department data:', apiDept);
+          
           if (apiDept) {
             if (typeof apiDept === 'object' && apiDept.name) {
+              // Department is an object with a name property
               departmentValue = apiDept.name;
-            } else if (typeof apiDept === 'string') {
+            } else if (typeof apiDept === 'string' && !apiDept.match(/^[a-f0-9]{24}$/i)) {
+              // Department is a string but NOT an ObjectId (24 hex chars)
               departmentValue = apiDept;
             }
           }
           
+          // If we couldn't extract a valid name from API, use stored value
+          if (!departmentValue || departmentValue === 'N/A') {
+            departmentValue = storedDepartment;
+          }
+          
+          // Final fallback
           if (!departmentValue) {
             departmentValue = 'N/A';
           }
-
-          let finalDepartmentValue = departmentValue;
-          if (!departmentValue || departmentValue === 'N/A') {
-            const storedDept = localStorage.getItem('userDepartment');
-            if (storedDept && storedDept !== 'N/A') {
-              finalDepartmentValue = storedDept;
-            }
-          }
+          
+          const finalDepartmentValue = departmentValue;
+          console.log('Context - Final department value:', finalDepartmentValue);
 
           const combinedData = {
             personalInfo: {

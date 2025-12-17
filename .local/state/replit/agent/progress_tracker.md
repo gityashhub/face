@@ -17,6 +17,9 @@
 [x] 11. Updated App.jsx - Wrapped all employee routes with EmployeeProvider so state persists across navigation
 [x] 12. Updated EmployeeLayout.jsx - Now uses useEmployee hook from context instead of local state
 [x] 13. Verified workflows are running correctly
+[x] 14. Fixed login.jsx - Improved department extraction to handle various response formats
+[x] 15. Fixed EmployeeLayout.jsx - Added ObjectId filtering to prevent storing MongoDB IDs as department names
+[x] 16. Fixed EmployeeContext.jsx - Added ObjectId detection to prevent overwriting valid department names
 
 ## Import Completion
 

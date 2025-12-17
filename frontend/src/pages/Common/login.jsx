@@ -45,30 +45,42 @@ const Login = () => {
       const response = await axios.post('/api/auth/login', loginData);
 
       if (response.data.success) {
-        // Store authentication data - NEVER use localStorage in production Claude artifacts
-        // This is just for demonstration, use proper token management
+        // Extract department name - handle various response formats
+        let departmentName = null;
+        const deptData = response.data.user.department;
+        if (deptData) {
+          if (typeof deptData === 'string') {
+            departmentName = deptData;
+          } else if (deptData.name) {
+            departmentName = deptData.name;
+          }
+        }
+        
+        console.log('Department extraction debug:', { raw: deptData, extracted: departmentName });
+        
         const userData = {
           token: response.data.token,
           userRole: response.data.user.role,
           userEmail: response.data.user.email,
           userName: response.data.user.name,
           userId: response.data.user.id,
-           userDepartment: response.data.user.department?.name || null,
-          departmentId: response.data.user.department?.id || null
+          userDepartment: departmentName,
+          departmentId: deptData?.id || deptData?._id || null
         };
         
         if (response.data.user.employeeId) {
           userData.employeeId = response.data.user.employeeId;
         }
 
-        // In a real application, store this securely
+        // Store each value, but only if it's not null/undefined
         Object.keys(userData).forEach(key => {
-          sessionStorage.setItem(key, userData[key]);
+          if (userData[key] !== null && userData[key] !== undefined) {
+            sessionStorage.setItem(key, userData[key]);
             localStorage.setItem(key, userData[key]);
-
+          }
         });
 
-         console.log("User Department:", userData.userDepartment);
+        console.log("User Department stored:", localStorage.getItem('userDepartment'));
         console.log("Token stored:", sessionStorage.getItem("token"));
 console.log("Token in sessionStorage:", sessionStorage.getItem("token"));
 console.log("Token in localStorage:", localStorage.getItem("token"));

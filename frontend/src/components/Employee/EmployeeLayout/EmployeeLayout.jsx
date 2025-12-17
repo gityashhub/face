@@ -19,15 +19,60 @@ import {
   TrendingUp,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { allowedKeysForDepartment } from '../../../utils/departmentAccess';
-import { useEmployee } from '../../../context/EmployeeContext';
+import { allowedKeysForDepartment, normalizeDepartment } from '../../../utils/departmentAccess';
+
+const getStoredDepartment = () => {
+  const stored = localStorage.getItem('userDepartment') || 
+                 sessionStorage.getItem('userDepartment') || 
+                 '';
+  
+  // Filter out ObjectIds (24 character hex strings) - we only want actual department names
+  if (stored && stored.match(/^[a-f0-9]{24}$/i)) {
+    console.warn('Sidebar: Ignoring ObjectId stored as department:', stored);
+    return '';
+  }
+  
+  return stored;
+};
+
+const getStoredEmployeeData = () => {
+  const storedDepartment = localStorage.getItem('userDepartment');
+  const storedName = localStorage.getItem('userName');
+  const storedEmail = localStorage.getItem('userEmail');
+  const storedEmployeeId = localStorage.getItem('employeeId');
+  
+  return {
+    personalInfo: {
+      firstName: storedName?.split(' ')[0] || 'Unknown',
+      lastName: storedName?.split(' ')[1] || 'User',
+    },
+    workInfo: {
+      position: 'Employee',
+      department: storedDepartment || 'N/A',
+    },
+    employeeId: storedEmployeeId || 'N/A',
+    contactInfo: {
+      personalEmail: storedEmail || 'user@company.com',
+    },
+  };
+};
 
 const EmployeeLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileDropdown, setProfileDropdown] = useState(false);
   const [notificationDropdown, setNotificationDropdown] = useState(false);
   
-  const { employeeData: contextEmployeeData, normalizedDepartment, loading } = useEmployee();
+  const [department, setDepartment] = useState(() => getStoredDepartment());
+  const [employeeData, setEmployeeData] = useState(() => getStoredEmployeeData());
+  
+  useEffect(() => {
+    const dept = getStoredDepartment();
+    if (dept && dept !== department) {
+      setDepartment(dept);
+    }
+    const empData = getStoredEmployeeData();
+    setEmployeeData(empData);
+  }, []);
   
   const [notifications, setNotifications] = useState([
     {
@@ -82,18 +127,15 @@ const EmployeeLayout = ({ children }) => {
     sales: { name: "Sales", icon: TrendingUp, path: "/employee/sales" },
   };
 
-  // Use context data or fallback
-  const emp = contextEmployeeData || {
-    personalInfo: { firstName: "Unknown", lastName: "User" },
-    workInfo: { position: "Employee", department: "N/A" },
-    employeeId: "N/A",
-    contactInfo: {
-      personalEmail: localStorage.getItem("userEmail") || "user@company.com",
-    },
-  };
+  // Use local state for employee data
+  const emp = employeeData;
 
-  // Use normalized department from context (persists across navigation)
-  const allowedKeys = allowedKeysForDepartment(normalizedDepartment);
+  // Build sidebar items from stored department - read directly from localStorage for reliability
+  const currentDept = getStoredDepartment();
+  const normalizedDept = normalizeDepartment(currentDept);
+  console.log('Sidebar Debug - Raw department:', currentDept, 'Normalized:', normalizedDept);
+  const allowedKeys = allowedKeysForDepartment(normalizedDept);
+  console.log('Sidebar Debug - Allowed keys:', allowedKeys);
   const sidebarItems = allowedKeys.map((key) => NAV_CATALOG[key]).filter(Boolean);
 
   const handleLogout = () => {
@@ -116,17 +158,6 @@ const EmployeeLayout = ({ children }) => {
   };
 
   const unreadNotifications = notifications.filter((n) => n.unread).length;
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-secondary-900 via-secondary-800 to-secondary-900">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="w-12 h-12 border-4 border-neon-pink border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-secondary-400 text-sm">Loading your dashboard...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex bg-gradient-to-br from-secondary-900 via-secondary-800 to-secondary-900 relative">
