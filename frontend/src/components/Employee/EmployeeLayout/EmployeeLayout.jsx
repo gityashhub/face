@@ -105,6 +105,27 @@ const EmployeeLayout = ({ children, employeeData }) => {
           const userData = response.data.data.user;
           const employeeDataFromAPI = response.data.data.employee;
 
+          // Extract department - handle both string and object formats
+          // Priority: API response > localStorage (never fall back to 'N/A' if we have stored data)
+          const storedDepartment = localStorage.getItem('userDepartment');
+          let departmentValue = storedDepartment; // Default to stored value
+          
+          // Try to get department from API response
+          const apiDept = employeeDataFromAPI?.workInfo?.department;
+          if (apiDept) {
+            // Handle both object format { name: 'Development' } and string format 'Development'
+            if (typeof apiDept === 'object' && apiDept.name) {
+              departmentValue = apiDept.name;
+            } else if (typeof apiDept === 'string') {
+              departmentValue = apiDept;
+            }
+          }
+          
+          // Final fallback
+          if (!departmentValue) {
+            departmentValue = 'N/A';
+          }
+
           // Combine user and employee data
           const combinedData = {
             personalInfo: {
@@ -113,7 +134,7 @@ const EmployeeLayout = ({ children, employeeData }) => {
             },
             workInfo: {
               position: employeeDataFromAPI?.workInfo?.position || 'Employee',
-              department: employeeDataFromAPI?.workInfo?.department?.name || 'N/A',
+              department: departmentValue,
             },
             employeeId: userData.employeeId || employeeDataFromAPI?.employeeId || 'N/A',
             contactInfo: {
@@ -124,11 +145,14 @@ const EmployeeLayout = ({ children, employeeData }) => {
 
           setFetchedEmployeeData(combinedData);
 
-          // Update localStorage with fresh data including department
+          // Update localStorage with fresh data - only update department if it's a valid value
           if (userData.name) localStorage.setItem('userName', userData.name);
           if (userData.email) localStorage.setItem('userEmail', userData.email);
           if (userData.employeeId) localStorage.setItem('employeeId', userData.employeeId);
-          if (combinedData.workInfo?.department) localStorage.setItem('userDepartment', combinedData.workInfo.department);
+          // Only update department if we got a valid value from API (not N/A or empty)
+          if (departmentValue && departmentValue !== 'N/A') {
+            localStorage.setItem('userDepartment', departmentValue);
+          }
         }
       } catch (error) {
         console.error('Error fetching employee data in layout:', error);

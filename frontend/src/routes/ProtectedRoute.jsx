@@ -17,27 +17,7 @@ const ProtectedRoute = ({ children, role, requiredRole }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (userRole === 'employee') {
-    const storedDept =
-      localStorage.getItem('userDepartment') ||
-      sessionStorage.getItem('userDepartment');
-
-    let department = storedDept;
-    if (!department) {
-      try {
-        const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
-        department = storedUser?.department?.name || storedUser?.department;
-      } catch (err) {
-        department = '';
-      }
-    }
-
-    const normalizedDept = normalizeDepartment(department);
-    if (!isModulePathAllowed(location.pathname, normalizedDept)) {
-      return <Navigate to="/employee/dashboard" replace />;
-    }
-  }
-
+  // Check role first before department-based access
   if (effectiveRole && userRole !== effectiveRole) {
     if (userRole === 'admin') {
       return <Navigate to="/admin/dashboard" replace />;
@@ -48,6 +28,34 @@ const ProtectedRoute = ({ children, role, requiredRole }) => {
       sessionStorage.clear();
       return <Navigate to="/login" replace />;
     }
+  }
+
+  // Department-based access control for employees
+  if (userRole === 'employee') {
+    // Get department from multiple sources
+    let department = localStorage.getItem('userDepartment') || 
+                     sessionStorage.getItem('userDepartment');
+
+    // Fallback to user object if direct storage is empty
+    if (!department) {
+      try {
+        const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+        department = storedUser?.department?.name || storedUser?.department;
+      } catch (err) {
+        department = '';
+      }
+    }
+
+    // Only restrict access if we have a valid department AND the path is not allowed
+    // If department is missing or invalid, allow access (let the page handle it)
+    if (department && department !== 'N/A' && department !== '') {
+      const normalizedDept = normalizeDepartment(department);
+      if (!isModulePathAllowed(location.pathname, normalizedDept)) {
+        return <Navigate to="/employee/dashboard" replace />;
+      }
+    }
+    // If no department is set yet, allow navigation (prevents premature redirects)
+    // The actual page can handle unauthorized access if needed
   }
 
   return children;
