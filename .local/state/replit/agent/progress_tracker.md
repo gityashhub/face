@@ -217,3 +217,41 @@
 [x] 67. Restarted Frontend workflow - Vite dev server running on port 5000
 [x] 68. Verified both workflows running successfully
 [x] 69. Import migration completed
+
+## Session 13 - Task Management Extension & Simplification
+
+[x] 70. Extended Tasks access to BDE department
+    - Updated frontend/src/utils/departmentAccess.js - Added 'tasks' to BDE department rules
+    - Updated backend/routes/taskRoutes.js - Added BDE departments to requireDepartment middleware
+    - Updated backend/controllers/taskController.js - Added BDE to TASK_ALLOWED_DEPTS
+
+[x] 71. Simplified Admin Task Form (removed Title, Project, Category)
+    - Updated backend/routes/taskRoutes.js - Removed title, project, category from validation
+    - Updated backend/models/Task.js - Made title, project, category optional with defaults
+    - Updated backend/controllers/taskController.js - Removed cross-department validation
+
+[x] 72. Updated Admin Task Form to show all employees
+    - Changed getAssignableEmployees() to return all employees (not filtered by department)
+
+[x] 73. Updated frontend UI to match simplified task structure
+    - Removed Title, Project, Category fields from Create Task modal
+    - Removed Title, Project, Category fields from Edit Task modal
+    - Updated task table to show Description instead of Title/Project
+    - Updated mobile task cards to show Description instead of Title/Project/Category
+    - Updated View Task modal to show Description instead of Title/Project/Category
+    - Changed "Task Distribution by Project" to "Task Distribution by Priority"
+    - Updated Recent Tasks section to show Description instead of Title
+    - Removed project filter from filters section
+
+[x] 74. Both Backend Server and Frontend workflows running successfully
+
+[x] 75. Fixed architect feedback - Removed unintended 'sales' department access
+    - Removed 'sales' from backend/routes/taskRoutes.js requireDepartment list
+    - Removed 'sales' from backend/controllers/taskController.js TASK_ALLOWED_DEPTS
+    - Only BDE variants (bde, businessdevelopment, businessdevelopmentexecutive) now have task access
+
+[x] 76. Fixed architect feedback - Backend alignment with simplified schema
+    - Updated getTasks to remove project/category filters from query params
+    - Updated search to use description only (not title/project)
+    - Removed projectDistribution from getTaskStats response
+    - Stats now only return priorityDistribution and statusDistribution

@@ -5,9 +5,7 @@ import Employee from '../models/Employee.js';
 import User from '../models/User.js';
 import { isDepartmentAllowed } from '../middleware/departmentAccess.js';
 
-const TASK_ALLOWED_DEPTS = ['developer', 'development', 'design', 'designing'];
-const DESIGN_DEPTS = ['design', 'designing'];
-const DEV_DEPTS = ['developer', 'development'];
+const TASK_ALLOWED_DEPTS = ['developer', 'development', 'design', 'designing', 'bde', 'businessdevelopment', 'businessdevelopmentexecutive'];
 
 const guardEmployeeTaskAccess = async (req, res, allowed = TASK_ALLOWED_DEPTS) => {
   if (req.user.role !== 'employee') return { ok: true };
@@ -57,11 +55,8 @@ export const createTask = async (req, res) => {
       });
     }
 
-  // Validate target employee department vs category
-  const targetEmployee = await Employee.findById(req.body.assignedTo).populate(
-    'workInfo.department',
-    'name code'
-  );
+  // Validate target employee exists
+  const targetEmployee = await Employee.findById(req.body.assignedTo);
   if (!targetEmployee) {
     return res.status(400).json({
       success: false,
@@ -69,21 +64,9 @@ export const createTask = async (req, res) => {
     });
   }
 
-  const category = (req.body.category || 'Other').toLowerCase();
-  const allowedDepartmentsForCategory = category.includes('design')
-    ? DESIGN_DEPTS
-    : DEV_DEPTS;
-
-  if (!isDepartmentAllowed(targetEmployee.workInfo?.department, allowedDepartmentsForCategory)) {
-    return res.status(403).json({
-      success: false,
-      message: 'Cross-department assignment is not allowed for this task category',
-    });
-  }
-
-  // Create the task
+  // Create the task (simplified - no title, project, category required)
   const taskData = {
-    title: req.body.title,
+    title: req.body.title || 'Task',
     description: req.body.description,
     assignedTo: req.body.assignedTo,
     assignedBy: req.user.id,
@@ -144,10 +127,8 @@ export const getTasks = async (req, res) => {
       limit = 50, 
       status, 
       priority, 
-      project, 
       assignedTo, 
       search,
-      category,
       overdue
     } = req.query;
 
@@ -162,11 +143,9 @@ export const getTasks = async (req, res) => {
     console.log('Employee query filter:', query);
   }
 
-    // Apply other filters
+    // Apply filters
     if (status) query.status = status;
     if (priority) query.priority = priority;
-    if (project) query.project = project;
-    if (category) query.category = category;
     if (assignedTo && req.user.role === 'admin') query.assignedTo = assignedTo;
 
     // Handle overdue filter
@@ -175,14 +154,10 @@ export const getTasks = async (req, res) => {
       query.status = { $nin: ['Completed', 'Cancelled'] };
     }
 
-    // Handle search - move to database level
+    // Handle search - search by description only (simplified form)
     if (search) {
       const searchRegex = new RegExp(search, 'i');
-      query.$or = [
-        { title: searchRegex },
-        { description: searchRegex },
-        { project: searchRegex }
-      ];
+      query.description = searchRegex;
     }
 
     console.log('Final MongoDB query:', query);
@@ -618,14 +593,6 @@ export const getTaskStats = async (req, res) => {
       dueDate: { $lt: new Date() }
     });
 
-    // Project-wise task distribution
-    const projectStats = await Task.aggregate([
-      { $match: query },
-      { $group: { _id: '$project', count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: 10 }
-    ]);
-
     // Priority-wise distribution
     const priorityStats = await Task.aggregate([
       { $match: query },
@@ -645,7 +612,6 @@ export const getTaskStats = async (req, res) => {
         inProgress: inProgressTasks,
         completed: completedTasks,
         overdue: overdueTasks,
-        projectDistribution: projectStats,
         priorityDistribution: priorityStats,
         statusDistribution: statusStats
       }

@@ -25,7 +25,6 @@ import toast from 'react-hot-toast';
 import { useTasks } from '../../hooks/useTasks';
 import { useAuth } from '../../hooks/useAuth';
 import { employeeAPI } from '../../utils/api'; // Use the same API as employee management
-import { normalizeDepartment } from '../../utils/departmentAccess';
 
 const AdminTaskManagement = () => {
 
@@ -46,44 +45,25 @@ const AdminTaskManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
-  const [projectFilter, setProjectFilter] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [newTask, setNewTask] = useState({
-    title: '',
     description: '',
     assignedTo: '',
-    project: '',
     priority: 'Medium',
     dueDate: '',
-    category: 'Development',
     estimatedHours: 0
   });
 
-  // State for employees and projects
+  // State for employees
   const [employees, setEmployees] = useState([]);
-  const [projects] = useState(['E-commerce Platform', 'Mobile App', 'Bug Fixes', 'Website Redesign', 'API Integration']);
   const [employeesLoading, setEmployeesLoading] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
 
-  const DESIGN_DEPTS = ['design', 'designing'];
-  const DEV_DEPTS = ['developer', 'development'];
-
-  const getAssignableEmployees = (category) => {
-    const allowed = (category || '').toLowerCase().includes('design')
-      ? DESIGN_DEPTS
-      : DEV_DEPTS;
-
-    return employees.filter((emp) => {
-      const dept =
-        emp?.workInfo?.department?.name ||
-        emp?.workInfo?.department ||
-        emp?.department?.name ||
-        '';
-      return allowed.includes(normalizeDepartment(dept));
-    });
+  const getAssignableEmployees = () => {
+    return employees;
   };
 
   // Fetch employees when component mounts using the same API as employee management
@@ -128,31 +108,22 @@ const AdminTaskManagement = () => {
   // Filter tasks
   useEffect(() => {
     let filtered = tasks.filter(task => {
-      const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           (task.assignedTo?.user?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           task.project.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = (task.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           (task.assignedTo?.user?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = !statusFilter || task.status === statusFilter;
       const matchesPriority = !priorityFilter || task.priority === priorityFilter;
-      const matchesProject = !projectFilter || task.project === projectFilter;
       
-      return matchesSearch && matchesStatus && matchesPriority && matchesProject;
+      return matchesSearch && matchesStatus && matchesPriority;
     });
 
     setFilteredTasks(filtered);
-  }, [tasks, searchTerm, statusFilter, priorityFilter, projectFilter]);
+  }, [tasks, searchTerm, statusFilter, priorityFilter]);
 const handleAddTask = async (e) => {
-  // Prevent form submission if it's a form event
   if (e && e.preventDefault) {
     e.preventDefault();
   }
 
   try {
-    // Validation
-    if (!newTask.title?.trim()) {
-      toast.error("Task title is required");
-      return;
-    }
-
     if (!newTask.description?.trim()) {
       toast.error("Task description is required");
       return;
@@ -168,56 +139,37 @@ const handleAddTask = async (e) => {
       return;
     }
 
-    // Find the selected employee to verify it exists
     const selectedEmployee = employees.find(emp => emp._id === newTask.assignedTo);
     if (!selectedEmployee) {
       toast.error("Selected employee not found. Please refresh and try again.");
       return;
     }
 
-    console.log('AdminTask: Creating task with data:', newTask);
-    console.log('AdminTask: Selected employee:', selectedEmployee);
-
-    // Prepare task payload
     const taskPayload = {
-      title: newTask.title.trim(),
       description: newTask.description.trim(),
-      assignedTo: newTask.assignedTo, // This should be the employee _id
-      project: newTask.project || '',
+      assignedTo: newTask.assignedTo,
       priority: newTask.priority || 'Medium',
       dueDate: newTask.dueDate,
-      category: newTask.category || 'Development',
       estimatedHours: parseInt(newTask.estimatedHours) || 0
     };
 
-    console.log('AdminTask: Final payload:', taskPayload);
+    await createTask(taskPayload);
 
-    // Create the task
-    const response = await createTask(taskPayload);
-    console.log('AdminTask: Create response:', response);
-
-    // Reset form and close modal
     setNewTask({
-      title: '',
       description: '',
       assignedTo: '',
-      project: '',
       priority: 'Medium',
       dueDate: '',
-      category: 'Development',
       estimatedHours: 0
     });
     setShowAddModal(false);
 
-    // Refresh tasks to ensure we have the latest data
     await fetchTasks();
     
   } catch (error) {
     console.error('AdminTask: Create task error:', error);
     
-    // Better error handling
     if (error.response?.data?.errors) {
-      // Validation errors from backend
       const validationErrors = error.response.data.errors;
       validationErrors.forEach(err => {
         toast.error(err.msg || err.message);
@@ -235,13 +187,10 @@ const handleAddTask = async (e) => {
     e.preventDefault();
     try {
       await updateTask(selectedTask._id, {
-        title: selectedTask.title,
         description: selectedTask.description,
-        assignedTo: selectedTask.assignedTo._id,
-        project: selectedTask.project,
+        assignedTo: selectedTask.assignedTo._id || selectedTask.assignedTo,
         priority: selectedTask.priority,
         dueDate: selectedTask.dueDate,
-        category: selectedTask.category,
         estimatedHours: parseInt(selectedTask.estimatedHours) || 0
       });
       
@@ -475,28 +424,12 @@ const handleAddTask = async (e) => {
               </select>
             </div>
 
-            {/* Project Filter */}
-            <div className="relative">
-              <BarChart3 className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-secondary-400" />
-              <select
-                value={projectFilter}
-                onChange={(e) => setProjectFilter(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
-              >
-                <option value="">All Projects</option>
-                {projects.map(project => (
-                  <option key={project} value={project}>{project}</option>
-                ))}
-              </select>
-            </div>
-
             {/* Clear Filters */}
             <button
               onClick={() => {
                 setSearchTerm('');
                 setStatusFilter('');
                 setPriorityFilter('');
-                setProjectFilter('');
               }}
               className="px-4 py-3 border border-secondary-600 text-secondary-300 rounded-lg hover:bg-secondary-700/50 transition-colors md:col-span-2 lg:col-span-1"
             >
@@ -511,9 +444,8 @@ const handleAddTask = async (e) => {
             <table className="w-full">
               <thead className="border-b border-secondary-700">
                 <tr>
-                  <th className="text-left p-4 sm:p-6 text-secondary-300 font-medium">Task</th>
+                  <th className="text-left p-4 sm:p-6 text-secondary-300 font-medium">Description</th>
                   <th className="text-left p-4 sm:p-6 text-secondary-300 font-medium">Assigned To</th>
-                  <th className="text-left p-4 sm:p-6 text-secondary-300 font-medium">Project</th>
                   <th className="text-left p-4 sm:p-6 text-secondary-300 font-medium">Priority</th>
                   <th className="text-left p-4 sm:p-6 text-secondary-300 font-medium">Status</th>
                   <th className="text-left p-4 sm:p-6 text-secondary-300 font-medium">Progress</th>
@@ -524,11 +456,8 @@ const handleAddTask = async (e) => {
               <tbody>
                 {filteredTasks.map((task) => (
                   <tr key={task._id} className="border-b border-secondary-800 hover:bg-secondary-800/30 transition-colors">
-                    <td className="p-4 sm:p-6">
-                      <div>
-                        <p className="text-white font-medium">{task.title}</p>
-                        <p className="text-secondary-400 text-sm">{task.category}</p>
-                      </div>
+                    <td className="p-4 sm:p-6 max-w-xs">
+                      <p className="text-white font-medium line-clamp-2">{task.description || 'No description'}</p>
                     </td>
                     <td className="p-4 sm:p-6">
                       <div className="flex items-center space-x-3">
@@ -544,11 +473,6 @@ const handleAddTask = async (e) => {
                           </p>
                         </div>
                       </div>
-                    </td>
-                    <td className="p-4 sm:p-6">
-                      <span className="px-3 py-1 text-xs rounded-full bg-secondary-700 text-secondary-300">
-                        {task.project}
-                      </span>
                     </td>
                     <td className="p-4 sm:p-6">
                       <span className={`px-3 py-1 text-xs rounded-full ${getPriorityColor(task.priority)}`}>
@@ -621,7 +545,7 @@ const handleAddTask = async (e) => {
               <Target className="w-12 h-12 text-secondary-600 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-secondary-400 mb-2">No tasks found</h3>
               <p className="text-secondary-500">
-                {searchTerm || statusFilter || priorityFilter || projectFilter
+                {searchTerm || statusFilter || priorityFilter
                   ? 'Try adjusting your search filters'
                   : 'Start by creating your first task'}
               </p>
@@ -636,7 +560,7 @@ const handleAddTask = async (e) => {
               <Target className="w-12 h-12 text-secondary-600 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-secondary-400 mb-2">No tasks found</h3>
               <p className="text-secondary-500">
-                {searchTerm || statusFilter || priorityFilter || projectFilter
+                {searchTerm || statusFilter || priorityFilter
                   ? 'Try adjusting your search filters'
                   : 'Start by creating your first task'}
               </p>
@@ -646,8 +570,7 @@ const handleAddTask = async (e) => {
               <div key={task._id} className="glass-morphism neon-border rounded-2xl p-4 space-y-4">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h3 className="text-white font-medium text-lg">{task.title}</h3>
-                    <p className="text-secondary-400 text-sm">{task.category}</p>
+                    <p className="text-white font-medium text-lg line-clamp-2">{task.description || 'No description'}</p>
                   </div>
                   <span className={`px-3 py-1 text-xs rounded-full ${getStatusColor(task.status)}`}>
                     {task.status}
@@ -660,10 +583,6 @@ const handleAddTask = async (e) => {
                     <p className="text-white font-medium">
                       {task.assignedTo?.user?.name || 'Unknown Employee'}
                     </p>
-                  </div>
-                  <div>
-                    <p className="text-secondary-400">Project</p>
-                    <p className="text-white font-medium">{task.project}</p>
                   </div>
                   <div>
                     <p className="text-secondary-400">Priority</p>
@@ -679,6 +598,10 @@ const handleAddTask = async (e) => {
                         <span className="text-red-400 text-xs block">Overdue</span>
                       )}
                     </p>
+                  </div>
+                  <div>
+                    <p className="text-secondary-400">Est. Hours</p>
+                    <p className="text-white font-medium">{task.estimatedHours || 0}h</p>
                   </div>
                 </div>
 
@@ -730,17 +653,17 @@ const handleAddTask = async (e) => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="glass-morphism neon-border rounded-2xl p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white">Task Distribution by Project</h2>
+              <h2 className="text-xl font-bold text-white">Task Distribution by Priority</h2>
               <BarChart3 className="w-5 h-5 text-neon-pink" />
             </div>
             <div className="space-y-4">
-              {stats?.projectDistribution?.slice(0, 4).map((project) => {
-                const percentage = stats.total > 0 ? (project.count / stats.total) * 100 : 0;
+              {stats?.priorityDistribution?.map((priority) => {
+                const percentage = stats.total > 0 ? (priority.count / stats.total) * 100 : 0;
                 return (
-                  <div key={project._id} className="space-y-2">
+                  <div key={priority._id} className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <span className="text-white font-medium">{project._id || 'No Project'}</span>
-                      <span className="text-neon-pink text-sm">{project.count} tasks</span>
+                      <span className="text-white font-medium">{priority._id || 'Unknown'}</span>
+                      <span className="text-neon-pink text-sm">{priority.count} tasks</span>
                     </div>
                     <div className="w-full bg-secondary-700 rounded-full h-2">
                       <div 
@@ -752,7 +675,7 @@ const handleAddTask = async (e) => {
                 );
               }) || (
                 <div className="text-center py-4">
-                  <p className="text-secondary-400">No project data available</p>
+                  <p className="text-secondary-400">No priority data available</p>
                 </div>
               )}
             </div>
@@ -766,13 +689,13 @@ const handleAddTask = async (e) => {
             <div className="space-y-4">
               {tasks.slice(0, 4).map((task) => (
                 <div key={task._id} className="flex items-center justify-between p-3 bg-secondary-800/30 rounded-lg">
-                  <div>
-                    <p className="text-white font-medium">{task.title}</p>
+                  <div className="flex-1 min-w-0 mr-3">
+                    <p className="text-white font-medium line-clamp-1">{task.description || 'No description'}</p>
                     <p className="text-sm text-secondary-400">
                       {task.assignedTo?.user?.name || 'Unknown Employee'}
                     </p>
                   </div>
-                  <div className="flex flex-col items-end space-y-1">
+                  <div className="flex flex-col items-end space-y-1 flex-shrink-0">
                     <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(task.status)}`}>
                       {task.status}
                     </span>
@@ -804,45 +727,20 @@ const handleAddTask = async (e) => {
               </button>
             </div>
             <form onSubmit={handleAddTask} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-secondary-300 mb-2">Title</label>
-                  <input
-                    type="text"
-                    value={newTask.title}
-                    onChange={(e) => setNewTask({...newTask, title: e.target.value})}
-                    className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-secondary-300 mb-2">Project</label>
-                  <select
-                    value={newTask.project}
-                    onChange={(e) => setNewTask({...newTask, project: e.target.value})}
-                    className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
-                    required
-                  >
-                    <option value="">Select Project</option>
-                    {projects.map(project => (
-                      <option key={project} value={project}>{project}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
               <div>
-                <label className="block text-sm font-medium text-secondary-300 mb-2">Description</label>
+                <label className="block text-sm font-medium text-secondary-300 mb-2">Description *</label>
                 <textarea
                   value={newTask.description}
                   onChange={(e) => setNewTask({...newTask, description: e.target.value})}
                   rows="3"
+                  placeholder="Enter task description..."
                   className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
                   required
                 ></textarea>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-secondary-300 mb-2">Assign To</label>
+                  <label className="block text-sm font-medium text-secondary-300 mb-2">Assign To *</label>
                   {employeesLoading ? (
                     <div className="flex items-center space-x-2 px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg">
                       <Loader2 className="w-4 h-4 animate-spin text-neon-pink" />
@@ -856,7 +754,7 @@ const handleAddTask = async (e) => {
                       required
                     >
                       <option value="">Select Employee</option>
-                      {(getAssignableEmployees(newTask.category)).map(emp => (
+                      {getAssignableEmployees().map(emp => (
                         <option key={emp._id} value={emp._id}>
                           {emp.fullName || `${emp.personalInfo?.firstName} ${emp.personalInfo?.lastName}` || emp.user?.name || 'Unknown'} 
                           ({emp.employeeId || emp.user?.employeeId || 'N/A'})
@@ -866,7 +764,7 @@ const handleAddTask = async (e) => {
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-secondary-300 mb-2">Priority</label>
+                  <label className="block text-sm font-medium text-secondary-300 mb-2">Priority *</label>
                   <select
                     value={newTask.priority}
                     onChange={(e) => setNewTask({...newTask, priority: e.target.value})}
@@ -879,9 +777,9 @@ const handleAddTask = async (e) => {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-secondary-300 mb-2">Due Date</label>
+                  <label className="block text-sm font-medium text-secondary-300 mb-2">Due Date *</label>
                   <input
                     type="date"
                     value={newTask.dueDate}
@@ -891,24 +789,7 @@ const handleAddTask = async (e) => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-secondary-300 mb-2">Category</label>
-                  <select
-                    value={newTask.category}
-                    onChange={(e) => setNewTask({...newTask, category: e.target.value})}
-                    className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
-                  >
-                    <option value="Development">Development</option>
-                    <option value="Design">Design</option>
-                    <option value="Testing">Testing</option>
-                    <option value="Documentation">Documentation</option>
-                    <option value="Bug Fix">Bug Fix</option>
-                    <option value="Feature">Feature</option>
-                    <option value="Maintenance">Maintenance</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-secondary-300 mb-2">Estimated Hours</label>
+                  <label className="block text-sm font-medium text-secondary-300 mb-2">Estimated Hours *</label>
                   <input
                     type="number"
                     min="0"
@@ -954,34 +835,8 @@ const handleAddTask = async (e) => {
               </button>
             </div>
             <form onSubmit={handleEditTask} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-secondary-300 mb-2">Title</label>
-                  <input
-                    type="text"
-                    value={selectedTask?.title || ''}
-                    onChange={(e) => setSelectedTask({...selectedTask, title: e.target.value})}
-                    className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-secondary-300 mb-2">Project</label>
-                  <select
-                    value={selectedTask?.project || ''}
-                    onChange={(e) => setSelectedTask({...selectedTask, project: e.target.value})}
-                    className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
-                    required
-                  >
-                    <option value="">Select Project</option>
-                    {projects.map(project => (
-                      <option key={project} value={project}>{project}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
               <div>
-                <label className="block text-sm font-medium text-secondary-300 mb-2">Description</label>
+                <label className="block text-sm font-medium text-secondary-300 mb-2">Description *</label>
                 <textarea
                   value={selectedTask?.description || ''}
                   onChange={(e) => setSelectedTask({...selectedTask, description: e.target.value})}
@@ -992,7 +847,7 @@ const handleAddTask = async (e) => {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-secondary-300 mb-2">Assign To</label>
+                  <label className="block text-sm font-medium text-secondary-300 mb-2">Assign To *</label>
                   {employeesLoading ? (
                     <div className="flex items-center space-x-2 px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg">
                       <Loader2 className="w-4 h-4 animate-spin text-neon-pink" />
@@ -1009,7 +864,7 @@ const handleAddTask = async (e) => {
                       required
                     >
                       <option value="">Select Employee</option>
-                      {(getAssignableEmployees(selectedTask?.category)).map(emp => (
+                      {getAssignableEmployees().map(emp => (
                         <option key={emp._id} value={emp._id}>
                           {emp.fullName || `${emp.personalInfo?.firstName} ${emp.personalInfo?.lastName}` || emp.user?.name || 'Unknown'} 
                           ({emp.employeeId || emp.user?.employeeId || 'N/A'})
@@ -1019,7 +874,7 @@ const handleAddTask = async (e) => {
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-secondary-300 mb-2">Priority</label>
+                  <label className="block text-sm font-medium text-secondary-300 mb-2">Priority *</label>
                   <select
                     value={selectedTask?.priority || ''}
                     onChange={(e) => setSelectedTask({...selectedTask, priority: e.target.value})}
@@ -1032,9 +887,9 @@ const handleAddTask = async (e) => {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-secondary-300 mb-2">Due Date</label>
+                  <label className="block text-sm font-medium text-secondary-300 mb-2">Due Date *</label>
                   <input
                     type="date"
                     value={selectedTask?.dueDate?.split('T')[0] || ''}
@@ -1044,24 +899,7 @@ const handleAddTask = async (e) => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-secondary-300 mb-2">Category</label>
-                  <select
-                    value={selectedTask?.category || ''}
-                    onChange={(e) => setSelectedTask({...selectedTask, category: e.target.value})}
-                    className="w-full px-4 py-3 bg-secondary-800/50 border border-secondary-600 rounded-lg text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20"
-                  >
-                    <option value="Development">Development</option>
-                    <option value="Design">Design</option>
-                    <option value="Testing">Testing</option>
-                    <option value="Documentation">Documentation</option>
-                    <option value="Bug Fix">Bug Fix</option>
-                    <option value="Feature">Feature</option>
-                    <option value="Maintenance">Maintenance</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-secondary-300 mb-2">Estimated Hours</label>
+                  <label className="block text-sm font-medium text-secondary-300 mb-2">Estimated Hours *</label>
                   <input
                     type="number"
                     min="0"
@@ -1113,11 +951,10 @@ const handleAddTask = async (e) => {
             ) : (
               <div className="space-y-6">
                 <div className="flex items-center justify-between p-4 bg-secondary-800/30 rounded-lg">
-                  <div>
-                    <h3 className="text-xl font-bold text-white">{selectedTask.title}</h3>
-                    <p className="text-neon-pink">{selectedTask.project}</p>
+                  <div className="flex-1 min-w-0 mr-3">
+                    <p className="text-white font-medium line-clamp-2">{selectedTask.description || 'No description'}</p>
                   </div>
-                  <span className={`px-3 py-1 text-sm rounded-full ${getStatusColor(selectedTask.status)}`}>
+                  <span className={`px-3 py-1 text-sm rounded-full flex-shrink-0 ${getStatusColor(selectedTask.status)}`}>
                     {selectedTask.status}
                   </span>
                 </div>
@@ -1137,10 +974,6 @@ const handleAddTask = async (e) => {
                       <span className={`inline-block px-2 py-1 text-xs rounded-full ${getPriorityColor(selectedTask.priority)}`}>
                         {selectedTask.priority}
                       </span>
-                    </div>
-                    <div>
-                      <label className="text-sm text-secondary-400">Category</label>
-                      <p className="text-white font-medium">{selectedTask.category}</p>
                     </div>
                     <div>
                       <label className="text-sm text-secondary-400">Created</label>

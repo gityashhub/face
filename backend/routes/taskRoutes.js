@@ -18,16 +18,12 @@ import { requireDepartment } from '../middleware/departmentAccess.js';
 
 const router = express.Router();
 
-// Validation middleware for task creation
+// Validation middleware for task creation (simplified - removed title, project, category)
 
 const taskValidation = [
-  body('title')
-    .trim()
-    .isLength({ min: 1, max: 100 })  // Changed from min: 3 to min: 1
-    .withMessage('Title must be between 1 and 100 characters'),
   body('description')
     .trim()
-    .isLength({ min: 1, max: 1000 })  // Changed from min: 10 to min: 1
+    .isLength({ min: 1, max: 1000 })
     .withMessage('Description must be between 1 and 1000 characters'),
   body('assignedTo')
     .isMongoId()
@@ -38,9 +34,6 @@ const taskValidation = [
   body('dueDate')
     .isISO8601()
     .withMessage('Please provide a valid due date'),
-  body('category')
-    .isIn(['Development', 'Design', 'Testing', 'Documentation', 'Research', 'Bug Fix', 'Feature', 'Maintenance', 'Other'])
-    .withMessage('Please select a valid category'),
   body('estimatedHours')
     .isNumeric()
     .isFloat({ min: 0, max: 1000 })
@@ -69,8 +62,8 @@ const statusValidation = [
 
 // Apply auth middleware to all routes
 router.use(protect);
-// Employees must belong to Developer or Designing to access task module
-router.use(requireDepartment(['developer', 'development', 'design', 'designing']));
+// Employees must belong to Developer, Designing, or BDE to access task module
+router.use(requireDepartment(['developer', 'development', 'design', 'designing', 'bde', 'businessdevelopment', 'businessdevelopmentexecutive']));
 
 // Routes
 router.route('/')

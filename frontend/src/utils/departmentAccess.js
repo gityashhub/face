@@ -12,9 +12,9 @@ const MODULE_PATH_MAP = {
 };
 
 const DEPARTMENT_RULES = {
-  bde: [...COMMON_MODULE_KEYS, 'sales'],
-  businessdevelopment: [...COMMON_MODULE_KEYS, 'sales'],
-  businessdevelopmentexecutive: [...COMMON_MODULE_KEYS, 'sales'],
+  bde: [...COMMON_MODULE_KEYS, 'sales', 'tasks'],
+  businessdevelopment: [...COMMON_MODULE_KEYS, 'sales', 'tasks'],
+  businessdevelopmentexecutive: [...COMMON_MODULE_KEYS, 'sales', 'tasks'],
   developer: [...COMMON_MODULE_KEYS, 'tasks', 'problems'],
   development: [...COMMON_MODULE_KEYS, 'tasks', 'problems'],
   designing: [...COMMON_MODULE_KEYS, 'tasks'],

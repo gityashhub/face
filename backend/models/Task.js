@@ -3,7 +3,8 @@ import mongoose from 'mongoose';
 const taskSchema = new mongoose.Schema({
   title: {
     type: String,
-    required: [true, 'Task title is required'],
+    required: false,
+    default: 'Task',
     trim: true,
     maxlength: [100, 'Task title cannot exceed 100 characters']
   },
@@ -25,6 +26,8 @@ const taskSchema = new mongoose.Schema({
   },
   project: {
     type: String,
+    required: false,
+    default: '',
     trim: true,
     maxlength: [50, 'Project name cannot exceed 50 characters']
   },
@@ -61,6 +64,7 @@ const taskSchema = new mongoose.Schema({
   },
   category: {
     type: String,
+    required: false,
     enum: ['Development', 'Design', 'Testing', 'Documentation', 'Research', 'Bug Fix', 'Feature', 'Maintenance', 'Other'],
     default: 'Other'
   },
