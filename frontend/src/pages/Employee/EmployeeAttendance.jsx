@@ -442,14 +442,54 @@ const EmployeeAttendance = () => {
 
               <div className="space-y-3">
                 {!hasCheckedIn ? (
-                  <button
-                    onClick={openFaceVerification}
-                    disabled={!currentLocation || loading}
-                    className="w-full px-4 md:px-6 py-3 md:py-4 bg-gradient-to-r from-neon-purple to-neon-pink text-white font-semibold rounded-lg hover-glow transition-all duration-300 flex items-center justify-center space-x-2 disabled:opacity-50 text-sm md:text-base min-h-[48px] touch-manipulation"
-                  >
-                    <Video className="w-5 h-5 flex-shrink-0" />
-                    <span>{loading ? 'Processing...' : 'Check In with Video Verification'}</span>
-                  </button>
+                  <>
+                    <button
+                      onClick={openFaceVerification}
+                      disabled={!currentLocation || loading}
+                      className="w-full px-4 md:px-6 py-3 md:py-4 bg-gradient-to-r from-neon-purple to-neon-pink text-white font-semibold rounded-lg hover-glow transition-all duration-300 flex items-center justify-center space-x-2 disabled:opacity-50 text-sm md:text-base min-h-[48px] touch-manipulation"
+                    >
+                      <Video className="w-5 h-5 flex-shrink-0" />
+                      <span>{loading ? 'Processing...' : 'Check In with Video Verification (Optional)'}</span>
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!currentLocation) {
+                          toast.error('Location is required for check-in.');
+                          getCurrentLocation();
+                          return;
+                        }
+                        try {
+                          setLoading(true);
+                          const locationCheck = geolocationUtils.isWithinOfficeRadius(
+                            currentLocation.latitude,
+                            currentLocation.longitude
+                          );
+                          if (!locationCheck.isWithin) {
+                            toast.error(`You are not within office premises. Distance: ${locationCheck.distance}m`);
+                            return;
+                          }
+                          const response = await attendanceAPI.checkIn({ notes: 'Check-in via web without face verification' });
+                          if (response.data.success) {
+                            toast.success('Check-in marked successfully without face verification!');
+                            setTodayAttendance(response.data.data);
+                            setHasCheckedIn(true);
+                            fetchAttendanceHistory();
+                            fetchTodayAttendance();
+                          }
+                        } catch (error) {
+                          console.error('Check-in error:', error);
+                          toast.error(error.response?.data?.message || 'Failed to mark check-in');
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                      disabled={!currentLocation || loading}
+                      className="w-full px-4 md:px-6 py-3 md:py-4 border border-neon-pink text-neon-pink font-semibold rounded-lg hover:bg-neon-pink/10 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 text-sm md:text-base min-h-[48px] touch-manipulation"
+                    >
+                      <Clock className="w-5 h-5 flex-shrink-0" />
+                      <span>{loading ? 'Processing...' : 'Check In Without Face'}</span>
+                    </button>
+                  </>
                 ) : !hasCheckedOut ? (
                   <button
                     onClick={handleCheckOut}

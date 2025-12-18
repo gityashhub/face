@@ -383,6 +383,16 @@ const AddEmployeeModal = ({
                 Cancel
               </button>
               <button
+                type="button"
+                onClick={async () => {
+                  // Create employee without face registration
+                  await handleCreateEmployee();
+                }}
+                className="px-4 sm:px-6 py-2.5 sm:py-3 border border-neon-purple text-neon-purple text-sm rounded-lg hover:bg-neon-purple/10 transition-colors"
+              >
+                Skip Face & Create
+              </button>
+              <button
                 type="submit"
                 className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-neon-pink to-neon-purple text-white font-semibold text-sm rounded-lg hover-glow transition-all duration-300"
               >
