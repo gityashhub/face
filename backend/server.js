@@ -51,7 +51,8 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
   "https://ems-backend.onrender.com",
-  "https://tarunaems.vercel.app/"
+  "https://tarunaems.vercel.app",
+  "https://face-votd.onrender.com"
 ];
 
 const corsOptions = {
