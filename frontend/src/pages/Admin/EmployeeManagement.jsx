@@ -535,11 +535,23 @@ const AddEmployeeModal = ({
               </button>
               <button
                 type="button"
+                onClick={() => {
+                  // Create employee without face data
+                  setCapturedFaceData(null);
+                  handleCreateEmployee();
+                }}
+                className="px-4 sm:px-6 py-2.5 sm:py-3 border border-neon-purple text-neon-purple text-sm rounded-lg hover:bg-neon-purple/10 transition-colors"
+              >
+                <span>Skip Face & Create</span>
+              </button>
+              <button
+                type="button"
                 onClick={handleCreateEmployee}
-                className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-neon-pink to-neon-purple text-white font-semibold text-sm rounded-lg hover-glow transition-all duration-300 flex items-center space-x-2"
+                disabled={!capturedFaceData}
+                className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-neon-pink to-neon-purple text-white font-semibold text-sm rounded-lg hover-glow transition-all duration-300 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Save className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span>Create Employee {capturedFaceData ? 'with Face Data' : ''}</span>
+                <span>Create with Face Data</span>
               </button>
             </div>
           </div>
@@ -922,7 +934,7 @@ const EmployeeManagement = () => {
       toast.error('Position and department are required');
       return;
     }
-    // Face registration is now COMPULSORY - always go to step 2
+    // Face registration is now OPTIONAL - go to step 2 where user can skip
     setCurrentStep(2);
   };
 
