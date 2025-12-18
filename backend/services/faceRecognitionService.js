@@ -5,7 +5,6 @@ import canvas from 'canvas';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs/promises';
-import { logPerformance } from '../utils/performanceLogger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -110,7 +109,6 @@ export async function detectFaces(imageBuffer) {
       .withFaceDescriptors();
 
     console.log(`Face detection took ${Date.now() - startTime}ms`);
-    logPerformance('detectFaces', Date.now() - startTime, { numFaces: detections.length });
 
     return detections.map(detection => ({
       bbox: detection.detection.box,
@@ -159,7 +157,6 @@ export async function detectSingleFace(imageBuffer, options = {}) {
       .withFaceDescriptor();
 
     console.log(`Single face detection took ${Date.now() - startTime}ms`);
-    logPerformance('detectSingleFace', Date.now() - startTime);
 
     if (!detection) {
       return {
@@ -343,37 +340,28 @@ export async function processVideoFrames(base64Frames) {
   
   // Early exit if we have enough good frames
   const REQUIRED_GOOD_FRAMES = 3;
-  
-  // Process frames in batches to improve concurrency while limiting memory usage
-  const BATCH_SIZE = 3;
-  
-  for (let i = 0; i < base64Frames.length; i += BATCH_SIZE) {
-    if (validDescriptors.length >= REQUIRED_GOOD_FRAMES) break;
-    
-    const batch = base64Frames.slice(i, i + BATCH_SIZE);
-    
-    await Promise.all(batch.map(async (frame) => {
-      if (validDescriptors.length >= REQUIRED_GOOD_FRAMES) return;
 
-      try {
-        // Remove data URL prefix if present
-        const base64Data = frame.replace(/^data:image\/\w+;base64,/, '');
-        const imageBuffer = Buffer.from(base64Data, 'base64');
-        
-        const result = await detectSingleFace(imageBuffer);
-        
-        if (result.success) {
-          validDescriptors.push(result.face.descriptor);
-          frameResults.push({
-            confidence: result.face.confidence,
-            descriptor: result.face.descriptor
-          });
-        }
-      } catch (error) {
-        console.error('Error processing frame:', error);
-        // Continue with next frame
+  for (const frame of base64Frames) {
+    if (validDescriptors.length >= REQUIRED_GOOD_FRAMES) break;
+
+    try {
+      // Remove data URL prefix if present
+      const base64Data = frame.replace(/^data:image\/\w+;base64,/, '');
+      const imageBuffer = Buffer.from(base64Data, 'base64');
+      
+      const result = await detectSingleFace(imageBuffer);
+      
+      if (result.success) {
+        validDescriptors.push(result.face.descriptor);
+        frameResults.push({
+          confidence: result.face.confidence,
+          descriptor: result.face.descriptor
+        });
       }
-    }));
+    } catch (error) {
+      console.error('Error processing frame:', error);
+      // Continue with next frame
+    }
   }
 
   if (validDescriptors.length === 0) {
