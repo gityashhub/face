@@ -5,6 +5,7 @@ import canvas from 'canvas';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs/promises';
+import { logPerformance } from '../utils/performanceLogger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -87,13 +88,29 @@ export async function detectFaces(imageBuffer) {
     await initializeFaceModels();
   }
 
+  const startTime = Date.now();
   try {
     const img = await canvas.loadImage(imageBuffer);
     
+    // Resize large images for performance
+    let processImg = img;
+    const MAX_WIDTH = 800; // Resize to max 800px width
+    if (img.width > MAX_WIDTH) {
+      const scaleFactor = MAX_WIDTH / img.width;
+      const newHeight = img.height * scaleFactor;
+      const cvs = new Canvas(MAX_WIDTH, newHeight);
+      const ctx = cvs.getContext('2d');
+      ctx.drawImage(img, 0, 0, MAX_WIDTH, newHeight);
+      processImg = cvs;
+    }
+    
     const detections = await faceapi
-      .detectAllFaces(img)
+      .detectAllFaces(processImg)
       .withFaceLandmarks()
       .withFaceDescriptors();
+
+    console.log(`Face detection took ${Date.now() - startTime}ms`);
+    logPerformance('detectFaces', Date.now() - startTime, { numFaces: detections.length });
 
     return detections.map(detection => ({
       bbox: detection.detection.box,
@@ -117,16 +134,32 @@ export async function detectSingleFace(imageBuffer, options = {}) {
     await initializeFaceModels();
   }
 
+  const startTime = Date.now();
   const { skipFrontalityCheck = false, skipQualityCheck = false } = options;
 
   try {
     const img = await canvas.loadImage(imageBuffer);
 
+    // Resize large images for performance
+    let processImg = img;
+    const MAX_WIDTH = 640; // Smaller size for single face detection
+    if (img.width > MAX_WIDTH) {
+      const scaleFactor = MAX_WIDTH / img.width;
+      const newHeight = img.height * scaleFactor;
+      const cvs = new Canvas(MAX_WIDTH, newHeight);
+      const ctx = cvs.getContext('2d');
+      ctx.drawImage(img, 0, 0, MAX_WIDTH, newHeight);
+      processImg = cvs;
+    }
+
     // Use higher quality detection with minimum confidence threshold
     const detection = await faceapi
-      .detectSingleFace(img, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
+      .detectSingleFace(processImg, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
       .withFaceLandmarks()
       .withFaceDescriptor();
+
+    console.log(`Single face detection took ${Date.now() - startTime}ms`);
+    logPerformance('detectSingleFace', Date.now() - startTime);
 
     if (!detection) {
       return {
@@ -148,7 +181,7 @@ export async function detectSingleFace(imageBuffer, options = {}) {
 
     // Check face quality (can be skipped for admin registration)
     if (!skipQualityCheck) {
-      const quality = assessFaceQuality(detection, img.width, img.height);
+      const quality = assessFaceQuality(detection, processImg.width, processImg.height);
       if (!quality.passed) {
         return {
           success: false,
@@ -307,26 +340,40 @@ export async function processVideoFrames(base64Frames) {
 
   const validDescriptors = [];
   const frameResults = [];
+  
+  // Early exit if we have enough good frames
+  const REQUIRED_GOOD_FRAMES = 3;
+  
+  // Process frames in batches to improve concurrency while limiting memory usage
+  const BATCH_SIZE = 3;
+  
+  for (let i = 0; i < base64Frames.length; i += BATCH_SIZE) {
+    if (validDescriptors.length >= REQUIRED_GOOD_FRAMES) break;
+    
+    const batch = base64Frames.slice(i, i + BATCH_SIZE);
+    
+    await Promise.all(batch.map(async (frame) => {
+      if (validDescriptors.length >= REQUIRED_GOOD_FRAMES) return;
 
-  for (const frame of base64Frames) {
-    try {
-      // Remove data URL prefix if present
-      const base64Data = frame.replace(/^data:image\/\w+;base64,/, '');
-      const imageBuffer = Buffer.from(base64Data, 'base64');
-      
-      const result = await detectSingleFace(imageBuffer);
-      
-      if (result.success) {
-        validDescriptors.push(result.face.descriptor);
-        frameResults.push({
-          confidence: result.face.confidence,
-          descriptor: result.face.descriptor
-        });
+      try {
+        // Remove data URL prefix if present
+        const base64Data = frame.replace(/^data:image\/\w+;base64,/, '');
+        const imageBuffer = Buffer.from(base64Data, 'base64');
+        
+        const result = await detectSingleFace(imageBuffer);
+        
+        if (result.success) {
+          validDescriptors.push(result.face.descriptor);
+          frameResults.push({
+            confidence: result.face.confidence,
+            descriptor: result.face.descriptor
+          });
+        }
+      } catch (error) {
+        console.error('Error processing frame:', error);
+        // Continue with next frame
       }
-    } catch (error) {
-      console.error('Error processing frame:', error);
-      // Continue with next frame
-    }
+    }));
   }
 
   if (validDescriptors.length === 0) {

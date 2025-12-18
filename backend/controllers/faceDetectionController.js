@@ -7,11 +7,37 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs/promises';
 import * as faceService from '../services/faceRecognitionService.js';
+import { measurePerformance } from '../utils/performanceLogger.js';
 
 // Initialize face models on startup
 faceService.initializeFaceModels().catch(err => {
   console.error('Failed to initialize face models:', err);
 });
+
+// Simple in-memory cache for face descriptors
+const faceDescriptorCache = new Map();
+const CACHE_TTL = 1000 * 60 * 30; // 30 minutes
+
+const getCachedFaceData = (userId) => {
+  const cached = faceDescriptorCache.get(userId.toString());
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+  return null;
+};
+
+const setCachedFaceData = (userId, data) => {
+  faceDescriptorCache.set(userId.toString(), {
+    data,
+    timestamp: Date.now()
+  });
+};
+
+const invalidateFaceCache = (userId) => {
+  if (userId) {
+    faceDescriptorCache.delete(userId.toString());
+  }
+};
 
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
@@ -28,6 +54,26 @@ const storage = multer.diskStorage({
     cb(null, uniqueName);
   }
 });
+
+// Load balancing: Limit concurrent face recognition tasks
+let currentFaceTasks = 0;
+const MAX_CONCURRENT_FACE_TASKS = 5; // Adjust based on server capacity (CPU cores)
+
+const withConcurrencyLimit = async (res, fn) => {
+  if (currentFaceTasks >= MAX_CONCURRENT_FACE_TASKS) {
+    return res.status(503).json({ 
+      success: false, 
+      message: 'Server is currently busy with face processing tasks. Please try again in a moment.' 
+    });
+  }
+
+  currentFaceTasks++;
+  try {
+    return await fn();
+  } finally {
+    currentFaceTasks--;
+  }
+};
 
 export const upload = multer({
   storage,
@@ -864,8 +910,9 @@ export const detectFaces = async (req, res) => {
 // @route   POST /api/face-detection/register-continuous-video
 // @access  Private (Admin)
 export const registerContinuousVideo = async (req, res) => {
-  try {
-    const { employeeId, frames } = req.body;
+  return withConcurrencyLimit(res, async () => {
+    try {
+      const { employeeId, frames } = req.body;
 
     if (!employeeId) {
       return res.status(400).json({ success: false, message: 'Employee ID is required' });
@@ -919,6 +966,11 @@ export const registerContinuousVideo = async (req, res) => {
     employee.faceRegistrationMethod = 'video';
 
     await employee.save();
+    
+    // Invalidate cache
+    if (employee.user) {
+      invalidateFaceCache(employee.user._id || employee.user);
+    }
 
     const existingFaceData = await FaceData.findOne({ employee: employeeId });
     const livenessScore = faceResult.validFrames / faceResult.framesProcessed;
@@ -959,18 +1011,20 @@ export const registerContinuousVideo = async (req, res) => {
       total_frames_processed: faceResult.framesProcessed
     });
 
-  } catch (error) {
-    console.error('Continuous video registration error:', error);
-    res.status(500).json({ success: false, message: 'Server error during face registration' });
-  }
+    } catch (error) {
+      console.error('Continuous video registration error:', error);
+      res.status(500).json({ success: false, message: 'Server error during face registration' });
+    }
+  });
 };
 
 // @desc    Verify face using live video with enhanced liveness detection
 // @route   POST /api/face-detection/verify-live-video
 // @access  Private (Employee)
 export const verifyLiveVideo = async (req, res) => {
-  try {
-    const { frames, location } = req.body;
+  return withConcurrencyLimit(res, async () => {
+    try {
+      const { frames, location } = req.body;
 
     if (!frames || !Array.isArray(frames) || frames.length < 5) {
       return res.status(400).json({
@@ -989,31 +1043,41 @@ export const verifyLiveVideo = async (req, res) => {
 
     const userLocation = location;
 
-    const employee = await Employee.findOne({ user: req.user.id });
-    if (!employee) {
-      return res.status(404).json({ success: false, message: 'Employee record not found' });
-    }
+    // Check cache first for face data
+    let storedEmbeddings = getCachedFaceData(req.user.id);
+    let employee;
 
-    let storedEmbeddings;
-    // face-api.js uses 128-dimensional descriptors, not 512
-    if (employee.faceEmbeddings && employee.faceEmbeddings.average && employee.faceEmbeddings.average.length > 0) {
-      storedEmbeddings = employee.faceEmbeddings;
-    } else if (employee.faceDescriptor && employee.faceDescriptor.length > 0) {
-      storedEmbeddings = { average: employee.faceDescriptor };
-    } else {
-      const faceData = await FaceData.findByEmployee(employee._id);
-      if (!faceData || !faceData.faceDescriptor || faceData.faceDescriptor.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: 'Face data not registered. Please register your face first.'
-        });
+    if (!storedEmbeddings) {
+      employee = await Employee.findOne({ user: req.user.id });
+      if (!employee) {
+        return res.status(404).json({ success: false, message: 'Employee record not found' });
       }
-      storedEmbeddings = { average: faceData.faceDescriptor };
+
+      // face-api.js uses 128-dimensional descriptors, not 512
+      if (employee.faceEmbeddings && employee.faceEmbeddings.average && employee.faceEmbeddings.average.length > 0) {
+        storedEmbeddings = employee.faceEmbeddings;
+      } else if (employee.faceDescriptor && employee.faceDescriptor.length > 0) {
+        storedEmbeddings = { average: employee.faceDescriptor };
+      } else {
+        const faceData = await FaceData.findByEmployee(employee._id);
+        if (!faceData || !faceData.faceDescriptor || faceData.faceDescriptor.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: 'Face data not registered. Please register your face first.'
+          });
+        }
+        storedEmbeddings = { average: faceData.faceDescriptor };
+      }
+
+      // Cache the embeddings
+      setCachedFaceData(req.user.id, storedEmbeddings);
     }
 
     let verifyResult;
     try {
-      verifyResult = await faceService.verifyVideoFace(frames, storedEmbeddings);
+      verifyResult = await measurePerformance('verifyLiveVideo', async () => {
+        return await faceService.verifyVideoFace(frames, storedEmbeddings);
+      }, { userId: req.user.id });
     } catch (error) {
       return res.status(500).json({
         success: false,
@@ -1094,10 +1158,11 @@ export const verifyLiveVideo = async (req, res) => {
       }
     });
 
-  } catch (error) {
-    console.error('Live video verification error:', error);
-    res.status(500).json({ success: false, message: 'Server error during face verification' });
-  }
+    } catch (error) {
+      console.error('Live video verification error:', error);
+      res.status(500).json({ success: false, message: 'Server error during face verification' });
+    }
+  });
 };
 
 // @desc    Check liveness from video frames

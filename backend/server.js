@@ -164,11 +164,8 @@ const startServer = async () => {
 
     // Initialize Socket.IO
     const io = new SocketIOServer(httpServer, {
-      cors: {
-        origin: true,
-        methods: ['GET', 'POST'],
-        credentials: true
-      }
+      cors: corsOptions, // Use the same CORS options as Express
+      transports: ['websocket', 'polling'] // Ensure compatibility
     });
 
     // Setup chat socket handlers
