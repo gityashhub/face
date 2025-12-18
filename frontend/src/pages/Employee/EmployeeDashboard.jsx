@@ -39,6 +39,7 @@ const EmployeeDashboard = () => {
   const [newBotMessage, setNewBotMessage] = useState('');
   const [loadingChat, setLoadingChat] = useState(false);
   const [loadingBot, setLoadingBot] = useState(false);
+  const [socketConnected, setSocketConnected] = useState(false);
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
   const botMessagesEndRef = useRef(null);
@@ -346,27 +347,38 @@ const EmployeeDashboard = () => {
   };
 
   useEffect(() => {
-    // Open a single shared socket for any chat experience (1:1, bot, or group)
-    if ((showChatModal || showBotModal || showGroupChatModal) && employeeData && !socketRef.current) {
+    // Connect socket on dashboard load for real-time presence and messaging
+    // Socket stays connected for the entire session (not just when modals are open)
+    if (employeeData && !socketRef.current) {
       const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://face-votd.onrender.com';
+      console.log('Connecting to socket:', SOCKET_URL);
       const socket = io(`${SOCKET_URL}/employee`, {
         auth: { token: localStorage.getItem('token') },
         transports: ['websocket', 'polling'],
         reconnection: true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 1000
+        reconnectionAttempts: 10,
+        reconnectionDelay: 1000,
+        timeout: 20000
       });
 
       socket.on('connect', () => {
         console.log('Socket connected:', socket.id);
+        setSocketConnected(true);
+      });
+
+      socket.on('disconnect', () => {
+        console.log('Socket disconnected');
+        setSocketConnected(false);
       });
 
       socket.on('connect_error', (error) => {
         console.error('Socket connection error:', error);
+        setSocketConnected(false);
       });
 
       socket.on('reconnect', (attemptNumber) => {
         console.log('Socket reconnected after', attemptNumber, 'attempts');
+        setSocketConnected(true);
       });
 
       const handlePresenceSync = (data) => {
@@ -451,10 +463,13 @@ const EmployeeDashboard = () => {
 
       socketRef.current = socket;
 
+      // Cleanup only when component unmounts (user leaves dashboard/logs out)
       return () => {
+        console.log('Disconnecting socket on dashboard unmount');
         socket.off('message', handleMessage);
         socket.off('error', handleError);
         socket.off('connect');
+        socket.off('disconnect');
         socket.off('connect_error');
         socket.off('reconnect');
         socket.off('presence:sync', handlePresenceSync);
@@ -463,14 +478,12 @@ const EmployeeDashboard = () => {
         socket.off('typing:stop', handleTypingStop);
         socket.disconnect();
         socketRef.current = null;
+        setSocketConnected(false);
       };
     }
-
-    if (!showChatModal && !showBotModal && !showGroupChatModal && socketRef.current) {
-      socketRef.current.disconnect();
-      socketRef.current = null;
-    }
-  }, [showChatModal, showBotModal, showGroupChatModal, employeeData]);
+    // Removed: Socket no longer disconnects when modals close
+    // Socket stays connected for real-time presence throughout the session
+  }, [employeeData]);
 
   useEffect(() => {
     if (showChatModal && employeeData) {
