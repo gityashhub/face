@@ -1,12 +1,14 @@
 // components/Header/Header.jsx - Improved version with better error handling
 import React, { useState, useEffect, useRef } from "react";
 import { Menu, User, ChevronDown } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import NotificationBell from "./NotificationBell";
 import ProfileDropdown from "./ProfileDropdown";
 import { authAPI, dashboardAPI } from '../../../utils/api';
 import toast from 'react-hot-toast';
 
 const Header = ({ sidebarItems, location, setSidebarOpen }) => {
+  const navigate = useNavigate();
   const [profileDropdown, setProfileDropdown] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
   const [notifications, setNotifications] = useState([]);
@@ -186,7 +188,7 @@ if (response.data.success) {
       });
       
       toast.success("Logged out successfully!");
-      window.location.href = '/login';
+      navigate('/login');
     }
   };
 
