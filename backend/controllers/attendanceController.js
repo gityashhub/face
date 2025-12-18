@@ -52,8 +52,14 @@ export const checkIn = async (req, res) => {
     const { location, deviceInfo, notes, faceVerified } = req.body;
     console.log('Check-in request:', { userId: req.user.id, location, faceVerified });
 
-    // Face verification is optional. When provided, we acknowledge it via logs/notes,
-    // but attendance can be marked without it as long as location checks pass.
+    // ⚠️ SECURITY: Require face verification for attendance
+    // This prevents employees from marking attendance without face verification
+    if (!faceVerified) {
+      return res.status(403).json({
+        success: false,
+        message: 'Face verification is required to mark attendance. Please use the face verification feature.'
+      });
+    }
 
     // Validate location data
     if (!location || !location.latitude || !location.longitude) {
@@ -146,7 +152,7 @@ const localDate = new Date(checkInTime.toISOString().split('T')[0] + 'T00:00:00Z
         address: addressString,
         accuracy: location.accuracy || 0
       },
-      notes: faceVerified ? (notes ? `${notes} (Face verified)` : 'Face verified') : (notes || ''),
+      notes: notes || '',
       ipAddress: req.ip,
       deviceInfo: deviceInfo || {
         userAgent: req.headers['user-agent'],

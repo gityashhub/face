@@ -806,8 +806,11 @@ const EmployeeDashboard = () => {
                   onClick={markAttendance}
                   className="px-6 py-3 bg-gradient-to-r from-neon-pink to-neon-purple text-white font-semibold rounded-lg hover-glow transition-all duration-300 flex items-center justify-center"
                 >
-                  <Camera className="w-4 h-4 mr-2" /> Mark Attendance
+                  <Camera className="w-4 h-4 mr-2" /> Mark Attendance with Face Verification
                 </button>
+                <p className="text-xs text-secondary-400 text-center">
+                  Face verification required
+                </p>
               </div>
             )}
             {hasCheckedIn && !hasCheckedOut && (
