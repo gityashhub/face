@@ -45,31 +45,30 @@ export const createEmployee = async (req, res) => {
       });
     }
 
-    // Extract and validate face data FIRST - FACE REGISTRATION IS COMPULSORY
-    // Validate BEFORE creating user to avoid orphaned users
+    // Extract face data - FACE REGISTRATION IS NOW OPTIONAL
     const { faceDescriptor, faceImage, hasFaceRegistered, ...cleanEmployeeData } = employeeData;
     
-    // COMPULSORY: Validate face descriptor - employee MUST have valid face data
-    if (!faceDescriptor || !Array.isArray(faceDescriptor)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Face registration is compulsory. Please capture employee face data before creating the account.'
-      });
-    }
+    // Optional: Validate face descriptor if provided
+    let validFaceDescriptor = null;
+    let validFaceImage = null;
+    let faceRegistered = false;
 
-    // face-api.js uses 128-dimensional descriptors (not 512 like InsightFace)
-    if (faceDescriptor.length !== 128 || !faceDescriptor.every(val => typeof val === 'number' && !isNaN(val))) {
-      return res.status(400).json({
-        success: false,
-        message: `Invalid face data. Face descriptor must be a valid 128-dimensional vector (received ${faceDescriptor.length} dimensions). Please recapture the face.`
-      });
+    if (faceDescriptor && Array.isArray(faceDescriptor)) {
+      // face-api.js uses 128-dimensional descriptors (not 512 like InsightFace)
+      if (faceDescriptor.length === 128 && faceDescriptor.every(val => typeof val === 'number' && !isNaN(val))) {
+        validFaceDescriptor = faceDescriptor;
+        validFaceImage = faceImage || null;
+        faceRegistered = true;
+        console.log('✅ Valid face descriptor received:', faceDescriptor.length, 'dimensions');
+      } else if (faceDescriptor.length > 0) {
+        console.warn('⚠️ Invalid face data provided, but continuing without face registration:', {
+          length: faceDescriptor.length,
+          isArray: Array.isArray(faceDescriptor)
+        });
+      }
+    } else {
+      console.log('ℹ️ No face data provided - face registration is optional');
     }
-
-    // Face data is valid - now safe to create user
-    const validFaceDescriptor = faceDescriptor;
-    const validFaceImage = faceImage;
-    const faceRegistered = true;
-    console.log('✅ Valid face descriptor received:', faceDescriptor.length, 'dimensions');
 
     // Create user account AFTER face validation to avoid orphans
     const user = await User.create({

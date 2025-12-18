@@ -80,3 +80,19 @@
 [x] 41. Restarted Frontend workflow - Vite dev server running on port 5000
 [x] 42. Verified both workflows are running successfully
 [x] 43. Import migration completed
+
+## Session 8 - Made Face Verification and Registration Optional
+
+[x] 44. Made face verification optional in attendance check-in
+    - Removed the required face verification check from checkIn controller
+    - Employees can now mark attendance without face verification
+[x] 45. Made face registration optional during employee creation
+    - Changed from compulsory to optional face data validation
+    - Admin can create employees without capturing face data
+    - If face data is provided, it's validated and stored; otherwise employee is created without it
+[x] 46. Removed "Face Registration" from admin dashboard quick actions
+    - Removed the Face Registration button from QuickActions.jsx
+    - Dashboard now shows 7 quick action items instead of 8
+[x] 47. Restarted both workflows and verified changes
+    - Backend server running successfully
+    - Frontend running successfully with QuickActions updated

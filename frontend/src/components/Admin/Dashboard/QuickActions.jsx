@@ -42,13 +42,6 @@ const QuickActions = ({ userRole = 'admin' }) => {
       description: 'Monitor employee attendance'
     },
     {
-      icon: UserCheck,
-      label: 'Face Registration',
-      href: '/admin/face-registration',
-      color: 'neon-purple',
-      description: 'Register employee faces'
-    },
-    {
       icon: DollarSign,
       label: 'Sales Dashboard',
       href: '/admin/sales',

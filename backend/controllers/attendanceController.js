@@ -52,14 +52,7 @@ export const checkIn = async (req, res) => {
     const { location, deviceInfo, notes, faceVerified } = req.body;
     console.log('Check-in request:', { userId: req.user.id, location, faceVerified });
 
-    // ⚠️ SECURITY: Require face verification for attendance
-    // This prevents employees from marking attendance without face verification
-    if (!faceVerified) {
-      return res.status(403).json({
-        success: false,
-        message: 'Face verification is required to mark attendance. Please use the face verification feature.'
-      });
-    }
+    // Note: Face verification is now optional for attendance marking
 
     // Validate location data
     if (!location || !location.latitude || !location.longitude) {
@@ -595,17 +588,17 @@ export const checkInWithFace = async (req, res) => {
     const registeredDescriptor = employee.faceDescriptor;
     const currentDescriptor = faceDescriptor;
 
-	    // Cosine similarity
-	    const dotProduct = registeredDescriptor.reduce((sum, val, i) => sum + val * currentDescriptor[i], 0);
-	    const mag1 = Math.sqrt(registeredDescriptor.reduce((sum, val) => sum + val * val, 0));
-	    const mag2 = Math.sqrt(currentDescriptor.reduce((sum, val) => sum + val * val, 0));
-	    const similarity = dotProduct / (mag1 * mag2);
+            // Cosine similarity
+            const dotProduct = registeredDescriptor.reduce((sum, val, i) => sum + val * currentDescriptor[i], 0);
+            const mag1 = Math.sqrt(registeredDescriptor.reduce((sum, val) => sum + val * val, 0));
+            const mag2 = Math.sqrt(currentDescriptor.reduce((sum, val) => sum + val * val, 0));
+            const similarity = dotProduct / (mag1 * mag2);
 
-	    // Shared threshold for cosine similarity (higher = stricter).
-	    // Kept in sync with the FACE_SIMILARITY_THRESHOLD used by the
-	    // Python face_service for consistent behaviour across flows.
-	    const threshold = FACE_SIMILARITY_THRESHOLD;
-	    const faceMatch = similarity > threshold;
+            // Shared threshold for cosine similarity (higher = stricter).
+            // Kept in sync with the FACE_SIMILARITY_THRESHOLD used by the
+            // Python face_service for consistent behaviour across flows.
+            const threshold = FACE_SIMILARITY_THRESHOLD;
+            const faceMatch = similarity > threshold;
 
     console.log('Face verification result:', {
       userId: req.user.id,
@@ -797,17 +790,17 @@ export const verifyFace = async (req, res) => {
     const registeredDescriptor = employee.faceDescriptor;
     const currentDescriptor = faceDescriptor;
 
-	    // Cosine similarity
-	    const dotProduct = registeredDescriptor.reduce((sum, val, i) => sum + val * currentDescriptor[i], 0);
-	    const mag1 = Math.sqrt(registeredDescriptor.reduce((sum, val) => sum + val * val, 0));
-	    const mag2 = Math.sqrt(currentDescriptor.reduce((sum, val) => sum + val * val, 0));
-	    const similarity = dotProduct / (mag1 * mag2);
+            // Cosine similarity
+            const dotProduct = registeredDescriptor.reduce((sum, val, i) => sum + val * currentDescriptor[i], 0);
+            const mag1 = Math.sqrt(registeredDescriptor.reduce((sum, val) => sum + val * val, 0));
+            const mag2 = Math.sqrt(currentDescriptor.reduce((sum, val) => sum + val * val, 0));
+            const similarity = dotProduct / (mag1 * mag2);
 
-	    // Shared threshold for cosine similarity (higher = stricter).
-	    // Kept in sync with the FACE_SIMILARITY_THRESHOLD used by the
-	    // Python face_service for consistent behaviour across flows.
-	    const threshold = FACE_SIMILARITY_THRESHOLD;
-	    const match = similarity > threshold;
+            // Shared threshold for cosine similarity (higher = stricter).
+            // Kept in sync with the FACE_SIMILARITY_THRESHOLD used by the
+            // Python face_service for consistent behaviour across flows.
+            const threshold = FACE_SIMILARITY_THRESHOLD;
+            const match = similarity > threshold;
 
     console.log('Face verification result:', {
       userId: req.user.id,
