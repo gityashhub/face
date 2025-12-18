@@ -59,8 +59,9 @@ const allowedOrigins = [
 const corsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl requests),
-    // specific allowed origins, and any Vercel preview deployment (.vercel.app)
-    if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+    // specific allowed origins, Vercel preview deployments (.vercel.app),
+    // and Replit preview deployments (.spock.replit.dev)
+    if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app') || origin.endsWith('.spock.replit.dev')) {
       callback(null, true);
     } else {
       console.log('Blocked by CORS:', origin);
