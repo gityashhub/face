@@ -171,6 +171,9 @@ const startServer = async () => {
     // Setup chat socket handlers
     setupChatSocket(io);
 
+    // Make io accessible to our router
+    app.set('io', io);
+
     // Start the server
     httpServer.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);

@@ -5,7 +5,6 @@ import canvas from 'canvas';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs/promises';
-import { logPerformance } from '../utils/performanceLogger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -110,7 +109,6 @@ export async function detectFaces(imageBuffer) {
       .withFaceDescriptors();
 
     console.log(`Face detection took ${Date.now() - startTime}ms`);
-    logPerformance('detectFaces', Date.now() - startTime, { numFaces: detections.length });
 
     return detections.map(detection => ({
       bbox: detection.detection.box,
@@ -159,7 +157,6 @@ export async function detectSingleFace(imageBuffer, options = {}) {
       .withFaceDescriptor();
 
     console.log(`Single face detection took ${Date.now() - startTime}ms`);
-    logPerformance('detectSingleFace', Date.now() - startTime);
 
     if (!detection) {
       return {
@@ -331,10 +328,12 @@ function assessFaceQuality(detection, imageWidth, imageHeight) {
 /**
  * Process multiple video frames and extract face descriptors
  * @param {Array<string>} base64Frames - Array of base64 encoded frames
+ * @param {Function} onProgress - Callback for progress updates
  * @returns {Promise<Object>} Processing result with embeddings
  */
-export async function processVideoFrames(base64Frames) {
+export async function processVideoFrames(base64Frames, onProgress) {
   if (!modelsLoaded) {
+    if (onProgress) onProgress({ status: 'loading_models', message: 'Loading face recognition models...' });
     await initializeFaceModels();
   }
 
@@ -343,37 +342,54 @@ export async function processVideoFrames(base64Frames) {
   
   // Early exit if we have enough good frames
   const REQUIRED_GOOD_FRAMES = 3;
-  
-  // Process frames in batches to improve concurrency while limiting memory usage
-  const BATCH_SIZE = 3;
-  
-  for (let i = 0; i < base64Frames.length; i += BATCH_SIZE) {
-    if (validDescriptors.length >= REQUIRED_GOOD_FRAMES) break;
-    
-    const batch = base64Frames.slice(i, i + BATCH_SIZE);
-    
-    await Promise.all(batch.map(async (frame) => {
-      if (validDescriptors.length >= REQUIRED_GOOD_FRAMES) return;
+  const totalFrames = base64Frames.length;
 
-      try {
-        // Remove data URL prefix if present
-        const base64Data = frame.replace(/^data:image\/\w+;base64,/, '');
-        const imageBuffer = Buffer.from(base64Data, 'base64');
-        
-        const result = await detectSingleFace(imageBuffer);
-        
-        if (result.success) {
-          validDescriptors.push(result.face.descriptor);
-          frameResults.push({
+  for (let i = 0; i < totalFrames; i++) {
+    const frame = base64Frames[i];
+    if (validDescriptors.length >= REQUIRED_GOOD_FRAMES) break;
+
+    if (onProgress) {
+      onProgress({
+        status: 'processing_frame',
+        current: i + 1,
+        total: totalFrames,
+        valid_so_far: validDescriptors.length,
+        message: `Processing frame ${i + 1}/${totalFrames}`
+      });
+    }
+
+    try {
+      // Remove data URL prefix if present
+      const base64Data = frame.replace(/^data:image\/\w+;base64,/, '');
+      const imageBuffer = Buffer.from(base64Data, 'base64');
+      
+      const result = await detectSingleFace(imageBuffer);
+      
+      if (result.success) {
+        validDescriptors.push(result.face.descriptor);
+        frameResults.push({
+          confidence: result.face.confidence,
+          descriptor: result.face.descriptor
+        });
+        if (onProgress) {
+          onProgress({
+            status: 'face_detected',
             confidence: result.face.confidence,
-            descriptor: result.face.descriptor
+            message: 'Face detected in frame'
           });
         }
-      } catch (error) {
-        console.error('Error processing frame:', error);
-        // Continue with next frame
+      } else {
+         if (onProgress) {
+          onProgress({
+            status: 'face_not_detected',
+            message: 'No face detected in frame'
+          });
+        }
       }
-    }));
+    } catch (error) {
+      console.error('Error processing frame:', error);
+      // Continue with next frame
+    }
   }
 
   if (validDescriptors.length === 0) {
@@ -525,12 +541,14 @@ export async function registerMultiAngleFace(frontImage, _leftImage, _rightImage
  * Verify face from video frames against stored embeddings
  * @param {Array<string>} frames - Array of base64 frames
  * @param {Object} storedEmbeddings - Stored face embeddings
+ * @param {Function} onProgress - Callback for progress updates
  * @returns {Promise<Object>} Verification result
  */
-export async function verifyVideoFace(frames, storedEmbeddings) {
-  const videoResult = await processVideoFrames(frames);
+export async function verifyVideoFace(frames, storedEmbeddings, onProgress) {
+  const videoResult = await processVideoFrames(frames, onProgress);
 
   if (!videoResult.success) {
+    if (onProgress) onProgress({ status: 'failed', message: videoResult.message });
     return {
       success: false,
       message: videoResult.message,
@@ -543,6 +561,7 @@ export async function verifyVideoFace(frames, storedEmbeddings) {
   const storedDescriptor = storedEmbeddings.average || storedEmbeddings.front;
 
   if (!storedDescriptor) {
+    if (onProgress) onProgress({ status: 'failed', message: 'No stored face embeddings found' });
     return {
       success: false,
       message: 'No stored face embeddings found',
@@ -550,11 +569,22 @@ export async function verifyVideoFace(frames, storedEmbeddings) {
     };
   }
 
+  if (onProgress) onProgress({ status: 'verifying', message: 'Verifying face match...' });
   const verification = verifyFaceMatch(videoResult.averageDescriptor, storedDescriptor);
 
   // Basic liveness check: require multiple valid frames
   const livenessScore = Math.min(1.0, videoResult.validFrames / 10);
   const livenessPassed = videoResult.validFrames >= 3 && livenessScore > 0.3;
+
+  if (onProgress) {
+    onProgress({
+      status: 'complete',
+      match: verification.match,
+      confidence: verification.similarity,
+      liveness: livenessPassed,
+      message: verification.match ? 'Face verified successfully' : 'Face does not match'
+    });
+  }
 
   return {
     success: true,

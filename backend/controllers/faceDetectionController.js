@@ -7,6 +7,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs/promises';
 import * as faceService from '../services/faceRecognitionService.js';
+import { getSocketIdForUser } from '../socket/chat.js';
 import { measurePerformance } from '../utils/performanceLogger.js';
 
 // Initialize face models on startup
@@ -379,13 +380,21 @@ export const verifyVideoFace = async (req, res) => {
       storedEmbeddings = { average: faceData.faceDescriptor };
     }
 
+    // Setup real-time progress updates
+    const io = req.app.get('io');
+    const socketId = getSocketIdForUser(req.user.id);
+    
+    const onProgress = (progress) => {
+      if (io && socketId) {
+        io.of('/employee').to(socketId).emit('face:verification:progress', progress);
+      }
+    };
+
     let verifyResult;
     try {
-      verifyResult = await callFaceServiceJSON('/verify-video', {
-        frames: frames,
-        stored_embeddings: storedEmbeddings
-      });
+      verifyResult = await faceService.verifyVideoFace(frames, storedEmbeddings, onProgress);
     } catch (error) {
+      console.error('Face verification error:', error);
       return res.status(500).json({ 
         success: false, 
         message: 'Face verification service error', 
@@ -1073,10 +1082,20 @@ export const verifyLiveVideo = async (req, res) => {
       setCachedFaceData(req.user.id, storedEmbeddings);
     }
 
+    // Setup real-time progress updates
+    const io = req.app.get('io');
+    const socketId = getSocketIdForUser(req.user.id);
+    
+    const onProgress = (progress) => {
+      if (io && socketId) {
+        io.of('/employee').to(socketId).emit('face:verification:progress', progress);
+      }
+    };
+
     let verifyResult;
     try {
       verifyResult = await measurePerformance('verifyLiveVideo', async () => {
-        return await faceService.verifyVideoFace(frames, storedEmbeddings);
+        return await faceService.verifyVideoFace(frames, storedEmbeddings, onProgress);
       }, { userId: req.user.id });
     } catch (error) {
       return res.status(500).json({

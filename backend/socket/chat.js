@@ -31,6 +31,10 @@ const broadcastPresence = (io, namespace) => {
   namespace.emit('presence:sync', { onlineUsers: onlineUserIds });
 };
 
+export const getSocketIdForUser = (userId) => {
+  return userSockets.get(userId.toString());
+};
+
 const setupChatSocket = (io) => {
   const employeeNamespace = io.of('/employee');
   employeeNamespace.use(authSocket);

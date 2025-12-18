@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { io } from 'socket.io-client';
 import EmployeeLayout from '../../components/Employee/EmployeeLayout/EmployeeLayout';
 import {
   Clock,
@@ -40,6 +41,47 @@ const EmployeeAttendance = () => {
   
   const videoRef = useRef(null);
   const localCameraHelper = useRef(null);
+  const socketRef = useRef(null);
+
+  useEffect(() => {
+    // Socket connection for real-time progress
+    const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://face-votd.onrender.com';
+    const token = localStorage.getItem('token');
+    
+    if (token && !socketRef.current) {
+      socketRef.current = io(`${SOCKET_URL}/employee`, {
+        auth: { token },
+        transports: ['websocket', 'polling']
+      });
+
+      socketRef.current.on('connect', () => {
+        console.log('Socket connected for attendance progress');
+      });
+      
+      socketRef.current.on('face:verification:progress', (data) => {
+        console.log('Progress:', data);
+        if (data.message) setLivenessMessage(data.message);
+        
+        // Map status/progress to percentage
+        if (data.status === 'loading_models') setVerificationProgress(10);
+        else if (data.status === 'processing_frame') {
+          // 10% to 60% for frame processing
+          const percentage = 10 + Math.floor((data.current / data.total) * 50);
+          setVerificationProgress(percentage);
+        }
+        else if (data.status === 'verifying') setVerificationProgress(70);
+        else if (data.status === 'complete') setVerificationProgress(100);
+        else if (data.status === 'failed') setVerificationProgress(100);
+      });
+    }
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -111,38 +153,39 @@ const EmployeeAttendance = () => {
     setIsVerifying(true);
     setVerificationStatus(null);
     setVerificationProgress(0);
-    setLivenessMessage('Capturing your photo...');
+    setLivenessMessage('Starting video verification...');
 
     try {
-      setVerificationProgress(20);
-      setLivenessMessage('Please look at the camera...');
+      setVerificationProgress(5);
+      setLivenessMessage('Capturing video frames...');
+      
+      // Capture 5 frames with 200ms interval for video verification
+      const frames = await localCameraHelper.current.captureMultipleFrames(videoRef.current, 5, 200);
 
-      // Use single photo capture instead of video frames for faster verification
-      const imageBlob = await localCameraHelper.current.captureImageBlob(videoRef.current);
-
-      if (!imageBlob) {
-        toast.error('Failed to capture image. Please try again.');
+      if (!frames || frames.length === 0) {
+        toast.error('Failed to capture video frames. Please try again.');
         setIsVerifying(false);
         return;
       }
 
-      setVerificationProgress(50);
-      setLivenessMessage('Verifying your face...');
+      setVerificationProgress(10);
+      setLivenessMessage('Processing video...');
 
-      // Use photo-based verification instead of video
-      const response = await faceAPI.verifyFaceAttendance(imageBlob, currentLocation);
+      // Use video-based verification
+      const response = await faceAPI.verifyLiveVideo(frames, currentLocation);
 
-      setVerificationProgress(80);
+      // Final progress update is handled by socket, but ensure 100% on return
+      setVerificationProgress(100);
 
       if (response.data.success) {
         setVerificationStatus('success');
-        setVerificationProgress(100);
         setLivenessMessage('Verification successful!');
         toast.success('Face verified! Marking attendance...');
 
         const checkInResponse = await attendanceAPI.checkIn({
-          notes: 'Check-in via face verification',
-          faceVerified: true  // Flag to indicate face verification was successful
+          notes: 'Check-in via video face verification',
+          faceVerified: true,
+          livenessScore: response.data.liveness_score
         });
 
         if (checkInResponse.data.success) {
@@ -160,8 +203,6 @@ const EmployeeAttendance = () => {
         }
       } else {
         setVerificationStatus('failed');
-        setVerificationProgress(100);
-
         const errorMessage = response.data.message || 'Face verification failed';
         setLivenessMessage(errorMessage);
         toast.error(errorMessage);
@@ -171,7 +212,6 @@ const EmployeeAttendance = () => {
       setVerificationStatus('failed');
       setVerificationProgress(100);
 
-      // Handle timeout errors specifically
       let errorMsg = 'Face verification failed';
       if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
         errorMsg = 'Verification timeout. Please try again.';
