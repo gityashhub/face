@@ -81,10 +81,11 @@ export const faceAPI = {
 
   verifyVideoFace: async (frames, location) => {
     try {
-      return await api.post('/face-detection/verify-video', {
-        frames,
-        location
-      });
+      return await api.post(
+        '/face-detection/verify-video',
+        { frames, location },
+        { timeout: 90000 }
+      );
     } catch (error) {
       console.error('Error verifying video face:', error);
       throw error;
@@ -93,7 +94,7 @@ export const faceAPI = {
 
   checkLiveness: async (frames) => {
     try {
-      return await api.post('/face-detection/check-liveness', { frames });
+      return await api.post('/face-detection/check-liveness', { frames }, { timeout: 60000 });
     } catch (error) {
       console.error('Error checking liveness:', error);
       throw error;
@@ -114,10 +115,11 @@ export const faceAPI = {
 
   verifyLiveVideo: async (frames, location) => {
     try {
-      return await api.post('/face-detection/verify-live-video', {
-        frames,
-        location
-      });
+      return await api.post(
+        '/face-detection/verify-live-video',
+        { frames, location },
+        { timeout: 120000 }
+      );
     } catch (error) {
       console.error('Error verifying live video:', error);
       throw error;

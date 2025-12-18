@@ -32,7 +32,7 @@ import messageRoutes from './routes/messageRoutes.js';
 import botRoutes from './routes/botRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
 import purchaseRoutes from './routes/purchaseRoutes.js';
-import faceDetectionRoutes from './routes/faceDetectionRoutes.js';
+import { initializeFaceModels } from './services/faceRecognitionService.js';
 import payslipRoutes from './routes/payslipRoutes.js';
 import groupRoutes from './routes/groupRoutes.js';
 
@@ -167,6 +167,14 @@ const startServer = async () => {
       cors: corsOptions, // Use the same CORS options as Express
       transports: ['websocket', 'polling'] // Ensure compatibility
     });
+
+    // Preload face models to avoid cold-start delays
+    try {
+      await initializeFaceModels();
+      console.log('✅ Face models preloaded');
+    } catch (e) {
+      console.warn('⚠️ Face models preloading failed, will load on demand:', e.message);
+    }
 
     // Setup chat socket handlers
     setupChatSocket(io);
