@@ -1,6 +1,7 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Building2, LayoutDashboard, Users, Calendar, Clock, FileText, Settings, X, DollarSign, CreditCard } from "lucide-react";
+import logo from "../../../assets/logo.jpg";
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
   const location = useLocation();
@@ -35,7 +36,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
             {/* Logo Container - Fixed aspect ratio */}
             <div className="w-12 h-12 rounded-lg overflow-hidden flex items-center justify-center bg-gradient-to-br from-neon-pink/10 to-neon-purple/10 border border-neon-pink/20 flex-shrink-0">
               <img
-                src="/src/assets/logo.jpg"
+                src={logo}
                 alt="Taruna Technology Logo"
                 className="w-full h-full object-contain p-1"
               />
