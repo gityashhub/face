@@ -338,13 +338,16 @@ export const registerMultiAngleFace = async (req, res) => {
 // @route   POST /api/face-detection/verify-video
 // @access  Private (Employee)
 export const verifyVideoFace = async (req, res) => {
+  const startTime = Date.now();
+  console.log(`[VerifyVideo] Request received from user ${req.user.id}`);
+  
   try {
     const { frames, location } = req.body;
 
-    if (!frames || !Array.isArray(frames) || frames.length < 3) {
+    if (!frames || !Array.isArray(frames) || frames.length < 2) {
       return res.status(400).json({
         success: false,
-        message: 'At least 3 video frames are required for verification'
+        message: 'At least 2 video frames are required for verification'
       });
     }
 
@@ -1035,10 +1038,10 @@ export const verifyLiveVideo = async (req, res) => {
     try {
       const { frames, location } = req.body;
 
-    if (!frames || !Array.isArray(frames) || frames.length < 5) {
+    if (!frames || !Array.isArray(frames) || frames.length < 2) {
       return res.status(400).json({
         success: false,
-        message: 'At least 5 video frames are required for live verification'
+        message: 'At least 2 video frames are required for live verification'
       });
     }
 
@@ -1191,10 +1194,10 @@ export const checkLiveness = async (req, res) => {
   try {
     const { frames } = req.body;
 
-    if (!frames || !Array.isArray(frames) || frames.length < 3) {
+    if (!frames || !Array.isArray(frames) || frames.length < 2) {
       return res.status(400).json({ 
         success: false, 
-        message: 'At least 3 video frames are required for liveness check' 
+        message: 'At least 2 video frames are required for liveness check' 
       });
     }
 
@@ -1219,7 +1222,7 @@ export const checkLiveness = async (req, res) => {
 
     // Basic liveness score based on valid frames
     const livenessScore = Math.min(1.0, result.validFrames / 10);
-    const livenessPassed = result.validFrames >= 3 && livenessScore > 0.3;
+    const livenessPassed = result.validFrames >= 2 && livenessScore > 0.3;
 
     res.json({
       success: true,

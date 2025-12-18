@@ -140,7 +140,7 @@ export async function detectSingleFace(imageBuffer, options = {}) {
 
     // Resize large images for performance
     let processImg = img;
-    const MAX_WIDTH = 480; // Smaller size for single face detection to reduce processing time
+    const MAX_WIDTH = 320; // Reduced to 320px for faster processing
     if (img.width > MAX_WIDTH) {
       const scaleFactor = MAX_WIDTH / img.width;
       const newHeight = img.height * scaleFactor;
@@ -341,10 +341,13 @@ export async function processVideoFrames(base64Frames, onProgress) {
   const frameResults = [];
   
   // Early exit if we have enough good frames
-  const REQUIRED_GOOD_FRAMES = 3;
+  const REQUIRED_GOOD_FRAMES = 2;
   const totalFrames = base64Frames.length;
 
   for (let i = 0; i < totalFrames; i++) {
+    // Yield to event loop to allow socket heartbeats and other requests to process
+    await new Promise(resolve => setImmediate(resolve));
+    
     const frame = base64Frames[i];
     if (validDescriptors.length >= REQUIRED_GOOD_FRAMES) break;
 
@@ -574,7 +577,7 @@ export async function verifyVideoFace(frames, storedEmbeddings, onProgress) {
 
   // Basic liveness check: require multiple valid frames
   const livenessScore = Math.min(1.0, videoResult.validFrames / 10);
-  const livenessPassed = videoResult.validFrames >= 3 && livenessScore > 0.3;
+  const livenessPassed = videoResult.validFrames >= 2 && livenessScore > 0.3;
 
   if (onProgress) {
     onProgress({
