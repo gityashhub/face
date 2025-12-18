@@ -127,7 +127,7 @@ const AddEmployeeModal = ({
           <div className="flex items-center space-x-2">
             <div className="flex items-center space-x-2 text-xs sm:text-sm text-green-400">
               <Camera className="w-4 h-4" />
-              <span>Face Registration Required</span>
+              <span>Face Registration (Optional)</span>
             </div>
             <button
               onClick={() => {
@@ -394,9 +394,9 @@ const AddEmployeeModal = ({
           <div className="space-y-6">
             <div className="text-center">
               <h3 className="text-lg font-bold text-white mb-2">
-                Face Registration for {newEmployee.personalInfo.firstName} {newEmployee.personalInfo.lastName}
+                Face Registration (Optional) for {newEmployee.personalInfo.firstName} {newEmployee.personalInfo.lastName}
               </h3>
-              <p className="text-secondary-400 text-sm">Position your face directly in front of the camera</p>
+              <p className="text-secondary-400 text-sm">Position your face directly in front of the camera (or skip to create employee without face data)</p>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               {/* Camera Feed */}
@@ -536,8 +536,7 @@ const AddEmployeeModal = ({
               <button
                 type="button"
                 onClick={handleCreateEmployee}
-                disabled={!capturedFaceData}
-                className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-neon-pink to-neon-purple text-white font-semibold text-sm rounded-lg hover-glow transition-all duration-300 flex items-center space-x-2 disabled:opacity-50"
+                className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-neon-pink to-neon-purple text-white font-semibold text-sm rounded-lg hover-glow transition-all duration-300 flex items-center space-x-2"
               >
                 <Save className="w-3 h-3 sm:w-4 sm:h-4" />
                 <span>Create Employee {capturedFaceData ? 'with Face Data' : ''}</span>
@@ -564,7 +563,7 @@ const EmployeeManagement = () => {
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [departments, setDepartments] = useState([]);
   const [currentStep, setCurrentStep] = useState(1);
-  const [faceRegistrationEnabled, setFaceRegistrationEnabled] = useState(true); // Face registration is now COMPULSORY
+  const [faceRegistrationEnabled, setFaceRegistrationEnabled] = useState(true); // Face registration is now OPTIONAL
   const [globalModelsLoaded, setGlobalModelsLoaded] = useState(false);
   const [faceDetected, setFaceDetected] = useState(false);
   const [isScanning, setIsScanning] = useState(false);

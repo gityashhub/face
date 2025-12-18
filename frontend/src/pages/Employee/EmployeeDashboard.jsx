@@ -809,7 +809,7 @@ const EmployeeDashboard = () => {
                   <Camera className="w-4 h-4 mr-2" /> Mark Attendance with Face Verification
                 </button>
                 <p className="text-xs text-secondary-400 text-center">
-                  Face verification required
+                  Face verification (Optional)
                 </p>
               </div>
             )}
