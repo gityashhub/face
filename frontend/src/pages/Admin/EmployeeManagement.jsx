@@ -741,7 +741,7 @@ const EmployeeManagement = () => {
     const timeoutId = setTimeout(() => {
       setIsScanning(false);
       toast.error('Capture timeout. Please try again.');
-    }, 30000); // 30 second timeout
+    }, 120000); // 120 second timeout
 
     try {
       // Capture image as base64
@@ -762,7 +762,7 @@ const EmployeeManagement = () => {
         response = await Promise.race([
           faceAPI.analyzeFrameBase64(imageBase64),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Request timeout - server took too long to respond')), 25000)
+            setTimeout(() => reject(new Error('Request timeout - server took too long to respond')), 90000)
           )
         ]);
         console.log('Response received:', response.data);

@@ -36,7 +36,7 @@ export const faceAPI = {
       return await api.post('/face-detection/analyze-frame-base64', {
         image: imageBase64
       }, {
-        timeout: 60000, // 60 second timeout for face analysis (account for server cold starts)
+        timeout: 120000, // 120 second timeout for face analysis
         headers: {
           'Content-Type': 'application/json'
         }
@@ -215,30 +215,59 @@ export class CameraHelper {
   captureImage(videoElement) {
     if (!videoElement) return null;
     
+    // Force resizing to max 640x480 for performance
+    const MAX_WIDTH = 640;
+    const MAX_HEIGHT = 480;
+
+    let width = videoElement.videoWidth || 640;
+    let height = videoElement.videoHeight || 480;
+    
+    // Maintain aspect ratio while resizing
+    if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+      const ratio = Math.min(MAX_WIDTH / width, MAX_HEIGHT / height);
+      width = width * ratio;
+      height = height * ratio;
+    }
+
     const canvas = document.createElement('canvas');
-    canvas.width = videoElement.videoWidth || 640;
-    canvas.height = videoElement.videoHeight || 480;
+    canvas.width = width;
+    canvas.height = height;
     
     const ctx = canvas.getContext('2d');
-    ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(videoElement, 0, 0, width, height);
     
-    return canvas.toDataURL('image/jpeg', 0.9);
+    // Reduce quality slightly for faster transmission
+    return canvas.toDataURL('image/jpeg', 0.8);
   }
 
   async captureImageBlob(videoElement) {
     if (!videoElement) return null;
     
+    // Force resizing to max 640x480 for performance
+    const MAX_WIDTH = 640;
+    const MAX_HEIGHT = 480;
+
+    let width = videoElement.videoWidth || 640;
+    let height = videoElement.videoHeight || 480;
+    
+    // Maintain aspect ratio while resizing
+    if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+      const ratio = Math.min(MAX_WIDTH / width, MAX_HEIGHT / height);
+      width = width * ratio;
+      height = height * ratio;
+    }
+
     const canvas = document.createElement('canvas');
-    canvas.width = videoElement.videoWidth || 640;
-    canvas.height = videoElement.videoHeight || 480;
+    canvas.width = width;
+    canvas.height = height;
     
     const ctx = canvas.getContext('2d');
-    ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(videoElement, 0, 0, width, height);
     
     return new Promise((resolve) => {
       canvas.toBlob((blob) => {
         resolve(blob);
-      }, 'image/jpeg', 0.9);
+      }, 'image/jpeg', 0.8);
     });
   }
 
