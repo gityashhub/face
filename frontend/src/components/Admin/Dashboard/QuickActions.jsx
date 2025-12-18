@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Calendar, Award, Clock, Building2, DollarSign, FileText, UserCheck } from 'lucide-react';
+import { Users, Calendar, Award, Clock, Building2, DollarSign, FileText } from 'lucide-react';
 
 const QuickActions = ({ userRole = 'admin' }) => {
   const navigate = useNavigate();
@@ -40,13 +40,6 @@ const QuickActions = ({ userRole = 'admin' }) => {
       href: '/admin/attendance',
       color: 'neon-pink',
       description: 'Monitor employee attendance'
-    },
-    {
-      icon: UserCheck,
-      label: 'Face Registration',
-      href: '/admin/face-registration',
-      color: 'neon-purple',
-      description: 'Register employee faces'
     },
     {
       icon: DollarSign,

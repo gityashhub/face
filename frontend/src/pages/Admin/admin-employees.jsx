@@ -34,7 +34,7 @@ const EmployeeManagement = () => {
   
   // Face detection states
   const [currentStep, setCurrentStep] = useState(1); // 1: Employee Form, 2: Face Registration
-  const [faceRegistrationEnabled, setFaceRegistrationEnabled] = useState(true);
+  const [faceRegistrationEnabled, setFaceRegistrationEnabled] = useState(false);
 
   // Use the face registration hook
   const {
