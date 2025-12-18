@@ -35,6 +35,7 @@ import purchaseRoutes from './routes/purchaseRoutes.js';
 import { initializeFaceModels } from './services/faceRecognitionService.js';
 import payslipRoutes from './routes/payslipRoutes.js';
 import groupRoutes from './routes/groupRoutes.js';
+import faceDetectionRoutes from './routes/faceDetectionRoutes.js';
 
 // import { createAdminIfNotExists } from './controllers/initAdmin.js';
 
