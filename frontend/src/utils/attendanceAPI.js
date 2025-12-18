@@ -3,8 +3,8 @@ import API from './api';
 
 // Office location constant - Make sure this matches your controller
 export const OFFICE_LOCATION = {
-  latitude: 22.29867,
-  longitude: 73.13130,
+  latitude: 22.298873262930066,
+  longitude: 73.13129619568713,
   radius: 100 // meters - Strict office location enforcement
 };
 
