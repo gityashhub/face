@@ -1,0 +1,89 @@
+Feature Enhancement: Task Management Extension & Simplification
+1. Department Access Update
+
+Currently, the Tasks section is available only for the Designing and Development departments. This functionality must be extended to the BDE (Business Development Executive) department.
+
+The BDE department panel should include the following sections:
+
+Dashboard
+
+Attendance
+
+Leave Requests
+
+Sales
+
+Tasks
+
+The Tasks section for BDE must behave consistently with existing department implementations in terms of navigation, permissions, and UI/UX.
+
+2. Admin Task Management – Form Simplification
+
+The existing “Add Task” button for admin users must:
+
+Remain in the same location
+
+Retain its current behavior (on click)
+
+When clicked, it should open a “Create New Task” form containing only the following fields:
+
+Required Fields
+
+Description – text input
+
+Assign To – dropdown for employee selection
+
+Previously limited to employees in the Development department
+
+Now must list all employees across all departments
+
+Priority – selectable priority levels
+
+Due Date – date picker in dd-mm-yyyy format
+
+Estimated Hours – numeric input
+
+3. Fields to Be Removed
+
+The following fields must be completely removed from the task creation form and related logic:
+
+Title
+
+Project
+
+Select Project
+
+Category
+
+4. Implementation Requirements
+
+UI/UX Consistency
+
+Ensure the BDE Tasks section visually and functionally matches existing department task sections.
+
+Validation & Functionality
+
+All existing validation rules and business logic for the remaining fields must remain intact.
+
+Database Updates
+
+Update the task schema to reflect the simplified structure.
+
+Ensure data integrity and compatibility with existing task records.
+
+API Modifications
+
+Update all task-related APIs (create, update, fetch) to support the simplified payload structure.
+
+Ensure existing tasks continue to function without errors.
+
+Testing & Verification
+Implement thorough testing to validate:
+
+Department-specific access to the Tasks section (including BDE)
+
+Form validation behavior
+
+Correct data storage and retrieval
+
+Backward compatibility with previously created tasks
