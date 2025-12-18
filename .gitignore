@@ -80,3 +80,4 @@ build/
 *.zip
 *.tar.gz
 *.rar
+.local/
