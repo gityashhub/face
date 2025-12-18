@@ -50,7 +50,8 @@ const allowedOrigins = [
   "https://tarunaems.netlify.app",
   "http://localhost:5173",
   "http://localhost:3000",
-  "https://ems-backend.onrender.com"
+  "https://ems-backend.onrender.com",
+  "https://tarunaems.vercel.app/"
 ];
 
 const corsOptions = {
