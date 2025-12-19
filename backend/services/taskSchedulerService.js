@@ -1,119 +1,149 @@
 import cron from 'node-cron';
 import Employee from '../models/Employee.js';
 import Task from '../models/Task.js';
-import { sendTaskStatusEmail } from './emailService.js';
+import { sendTaskStatusEmail, sendConsolidatedTaskStatusEmail } from './emailService.js';
 
 let scheduledJobs = [];
+let schedulerStarted = false; // 🛡️ guard
 
+// ---------- START SCHEDULER ----------
 const startTaskStatusScheduler = async () => {
   try {
-    // Schedule jobs at 12:05 PM, 12:10 PM, and 12:15 PM IST
-    // IST is UTC+5:30, so we calculate the cron times accordingly
-    // For 12:05 PM IST = 06:35 UTC (in standard IST offset)
-    // For 12:10 PM IST = 06:40 UTC
-    // For 12:15 PM IST = 06:45 UTC
-
-    const scheduleTimes = [
-      { time: '5 12 * * *', name: '12:05 PM IST' }, // 12:05 PM IST
-      { time: '10 12 * * *', name: '12:10 PM IST' }, // 12:10 PM IST
-      { time: '15 12 * * *', name: '12:15 PM IST' } // 12:15 PM IST
-    ];
-
-    for (const schedule of scheduleTimes) {
-      const job = cron.schedule(schedule.time, async () => {
-        console.log(`\n🔔 Task Status Report scheduled job started at ${schedule.name}`);
-        await sendTaskStatusReports();
-      });
-
-      scheduledJobs.push(job);
-      console.log(`✅ Scheduled task status report job at ${schedule.name}`);
+    if (schedulerStarted) {
+      console.log('⚠️ Task status scheduler already running. Skipping re-init.');
+      return true;
     }
 
+    /**
+     * Daily at 10:00 PM IST
+     */
+    const scheduleTimes = [
+      {
+        time: '0 22 * * *',
+        name: 'Daily at 10:00 PM IST'
+      }
+    ];
+
+
+
+    for (const schedule of scheduleTimes) {
+      const job = cron.schedule(
+        schedule.time,
+        async () => {
+          console.log(`🔔 Task Status Report job started (${schedule.name})`);
+          await sendTaskStatusReports();
+        },
+        {
+          timezone: 'Asia/Kolkata'
+        }
+      );
+
+      scheduledJobs.push(job);
+      console.log(`✅ Scheduled: ${schedule.name}`);
+    }
+
+    schedulerStarted = true;
     console.log('✅ Task status scheduler initialized successfully');
     return true;
   } catch (error) {
-    console.error('❌ Failed to initialize task status scheduler:', error.message);
+    console.error('❌ Failed to initialize task status scheduler:', error);
     return false;
   }
 };
 
+// ---------- SEND REPORTS ----------
 const sendTaskStatusReports = async () => {
   try {
-    console.log('📧 Starting task status report generation...');
+    console.log('📧 Generating task status reports...');
 
-    // Get all employees with their tasks
-    const employees = await Employee.find({ isActive: true })
+    const employees = await Employee.find({ status: 'Active' })
       .populate('workInfo.department')
+      .populate('user', 'email')
       .lean();
 
-    if (!employees || employees.length === 0) {
-      console.log('ℹ️  No active employees found');
+    if (!employees.length) {
+      console.log('ℹ️ No active employees found — skipping email send');
+      console.log('✅ Task status reports finished | Success: 0, Failed: 0, Total: 0');
       return;
     }
 
-    let successCount = 0;
-    let failureCount = 0;
+    const consolidate = String(process.env.CONSOLIDATE_TASK_REPORTS || 'true').toLowerCase() === 'true';
 
-    // Send email for each employee with their tasks
-    for (const employee of employees) {
-      try {
-        const tasks = await Task.find({ assignedTo: employee._id })
-          .select('description status priority dueDate estimatedHours actualHours')
-          .lean();
+    if (consolidate) {
+      const employeeIds = employees.map(e => e._id);
+      const allTasks = await Task.find({ assignedTo: { $in: employeeIds } })
+        .select('assignedTo description status priority dueDate estimatedHours actualHours')
+        .lean();
 
-        // Send email regardless of task count (even if no tasks, send report)
-        const emailSent = await sendTaskStatusEmail(employee, tasks);
-        if (emailSent) {
-          successCount++;
-        } else {
+      const tasksMap = new Map();
+      allTasks.forEach(t => {
+        const key = String(t.assignedTo);
+        if (!tasksMap.has(key)) tasksMap.set(key, []);
+        tasksMap.get(key).push(t);
+      });
+
+      const sections = employees.map(e => ({
+        employee: e,
+        tasks: tasksMap.get(String(e._id)) || []
+      }));
+
+      const sent = await sendConsolidatedTaskStatusEmail(sections);
+      console.log(
+        `✅ Task status reports finished | Mode: Consolidated | Success: ${sent ? 1 : 0}, Failed: ${sent ? 0 : 1}, Employees: ${employees.length}`
+      );
+    } else {
+      let successCount = 0;
+      let failureCount = 0;
+      for (const employee of employees) {
+        try {
+          const tasks = await Task.find({ assignedTo: employee._id })
+            .select('description status priority dueDate estimatedHours actualHours')
+            .lean();
+          const emailSent = await sendTaskStatusEmail(employee, tasks);
+          emailSent ? successCount++ : failureCount++;
+        } catch (err) {
+          console.error(
+            `❌ Error processing employee ${employee.personalInfo?.firstName} ${employee.personalInfo?.lastName}:`,
+            err.message
+          );
           failureCount++;
         }
-      } catch (error) {
-        console.error(
-          `❌ Error processing employee ${employee.personalInfo?.firstName} ${employee.personalInfo?.lastName}:`,
-          error.message
-        );
-        failureCount++;
       }
-    }
-
-    console.log(
-      `✅ Task status reports completed. Success: ${successCount}, Failed: ${failureCount} (Total Employees: ${employees.length})`
-    );
-
-    // Log summary
-    if (successCount > 0) {
-      console.log(`📊 ${successCount} task status emails sent successfully`);
-    }
-    if (failureCount > 0) {
-      console.log(`⚠️  ${failureCount} task status emails failed to send`);
+      console.log(
+        `✅ Task status reports finished | Mode: Per-Employee | Success: ${successCount}, Failed: ${failureCount}, Total: ${employees.length}`
+      );
     }
   } catch (error) {
-    console.error('❌ Error in task status report generation:', error.message);
+    console.error('❌ Task status report generation failed:', error);
   }
 };
 
+// ---------- STOP SCHEDULER ----------
 const stopTaskStatusScheduler = () => {
   try {
-    for (const job of scheduledJobs) {
-      job.stop();
-    }
+    scheduledJobs.forEach(job => job.stop());
     scheduledJobs = [];
+    schedulerStarted = false;
     console.log('✅ Task status scheduler stopped');
     return true;
   } catch (error) {
-    console.error('❌ Failed to stop task status scheduler:', error.message);
+    console.error('❌ Failed to stop scheduler:', error);
     return false;
   }
 };
 
-const getSchedulerStatus = () => {
-  return {
-    isRunning: scheduledJobs.length > 0,
-    jobCount: scheduledJobs.length,
-    scheduledTimes: ['12:05 PM IST', '12:10 PM IST', '12:15 PM IST'],
-    recipient: 'tarunatechnology@gmail.com'
-  };
-};
+// ---------- STATUS ----------
+const getSchedulerStatus = () => ({
+  isRunning: schedulerStarted,
+  jobCount: scheduledJobs.length,
+  frequency: 'Daily at 10:00 PM IST',
+  recipient: process.env.TASK_REPORT_RECIPIENT || 'ypank1414@gmail.com',
+  timezone: 'Asia/Kolkata'
+});
 
-export { startTaskStatusScheduler, sendTaskStatusReports, stopTaskStatusScheduler, getSchedulerStatus };
+export {
+  startTaskStatusScheduler,
+  sendTaskStatusReports,
+  stopTaskStatusScheduler,
+  getSchedulerStatus
+};
