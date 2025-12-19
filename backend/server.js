@@ -36,6 +36,7 @@ import { initializeFaceModels } from './services/faceRecognitionService.js';
 import payslipRoutes from './routes/payslipRoutes.js';
 import groupRoutes from './routes/groupRoutes.js';
 import faceDetectionRoutes from './routes/faceDetectionRoutes.js';
+import schedulerRoutes from './routes/schedulerRoutes.js';
 import { initializeEmailService } from './services/emailService.js';
 import { startTaskStatusScheduler } from './services/taskSchedulerService.js';
 
@@ -112,6 +113,7 @@ app.use('/api/purchase', purchaseRoutes);
 app.use('/api/face-detection', faceDetectionRoutes);
 app.use('/api/payslips', payslipRoutes);
 app.use('/api/groups', groupRoutes);
+app.use('/api/scheduler', schedulerRoutes);
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.status(200).json({
