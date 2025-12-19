@@ -1,0 +1,96 @@
+Feature Requirement: Automated Daily Task Status Email Report
+
+Currently, the admin can assign tasks to employees using the Task Management module.
+This feature must now be extended to include automated daily task status email reporting.
+
+1. Email Scheduling (IST)
+
+An automated email must be sent daily in IST at the following times:
+
+12:05 PM
+
+12:10 PM
+
+12:15 PM
+
+At each scheduled time, the email must reflect the current (real-time) status of all tasks assigned to employees at that moment.
+
+2. Email Recipient
+
+All task status report emails must be sent to:
+
+tarunatechnology@gmail.com
+
+3. Email Sender (IMPORTANT – Configurable Admin Email)
+
+Emails must be technically sent using a single admin/system email address, which must be configurable (via environment variable or config).
+
+This admin/system email will be used for SMTP authentication and will own the app password.
+
+Example (configurable):
+
+ADMIN_SYSTEM_EMAIL=ypank14@gmail.com
+ask for app password from user.
+
+
+Each email must be sent on behalf of the employee whose tasks are being reported:
+
+The visible “From” name and email must be the employee’s registered email address
+
+The Reply-To address must also be the employee’s registered email
+
+Note: Employee email accounts must not be used for SMTP authentication and must not require app passwords.
+
+4. Email Content Requirements
+
+Each email must include complete task details exactly as shown in the Tasks section of the employee panel at the time of sending.
+
+Employee Information
+
+Employee Name
+
+Employee Department
+
+Employee Email ID
+
+Task Details (for all tasks assigned to that employee)
+
+Task Description
+
+Task Status (e.g., Pending, In Progress, Completed)
+
+Priority
+
+Due Date
+
+Estimated Hours
+
+Any other task-related fields currently visible in the employee task details view
+
+The email content must accurately reflect the real-time task data at the scheduled send time.
+
+5. Implementation Requirements
+
+Use a reliable scheduler / cron job aligned explicitly with the IST timezone.
+
+Capture accurate task status snapshots at each scheduled time.
+
+Handle multiple employees, each with multiple tasks, correctly.
+
+Send separate emails per employee, each representing only that employee’s tasks.
+
+Prevent duplicate or missed emails for any scheduled execution.
+
+Implement robust logging and error handling for:
+
+Email delivery failures
+
+Scheduler execution errors
+
+6. Technical Constraints (Explicit)
+
+Only one admin/system email account must be used for SMTP authentication.
+
+Employee email credentials must never be stored or used.
+
+Email sending must follow the “send on behalf of employee” pattern.
