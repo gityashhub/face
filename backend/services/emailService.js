@@ -295,7 +295,7 @@ const sendTaskStatusEmail = async (employee, tasks) => {
         name: `${employee.personalInfo?.firstName || ''} ${employee.personalInfo?.lastName || ''}`,
         address: adminEmail
       },
-      to: 'ypank1414@gmail.com',
+      to: 'vrundafadadu@gmail.com',
       replyTo: employeeEmail,
       subject: `Daily Task Status Report - ${employee.personalInfo?.firstName || 'Employee'} [${formatDateIST(new Date())}]`,
       html: htmlContent
@@ -531,7 +531,7 @@ const sendConsolidatedTaskStatusEmail = async (sections) => {
     `;
 
     const pdfPath = await generateConsolidatedTasksPDF(sections);
-    const recipient = process.env.TASK_REPORT_RECIPIENT || 'ypank1414@gmail.com';
+    const recipient = process.env.TASK_REPORT_RECIPIENT || 'vrundafadadu@gmail.com';
 
     const mailOptions = {
       from: {
