@@ -40,6 +40,7 @@
     "mongodb": "^6.20.0",
     "mongoose": "^8.18.1",
     "multer": "^2.0.2",
+    "node-cron": "^4.2.1",
     "nodemailer": "^7.0.6",
     "pdfkit": "^0.17.2",
     "react-data-table-component": "^7.7.0",
