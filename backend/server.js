@@ -36,6 +36,8 @@ import { initializeFaceModels } from './services/faceRecognitionService.js';
 import payslipRoutes from './routes/payslipRoutes.js';
 import groupRoutes from './routes/groupRoutes.js';
 import faceDetectionRoutes from './routes/faceDetectionRoutes.js';
+import { initializeEmailService } from './services/emailService.js';
+import { startTaskStatusScheduler } from './services/taskSchedulerService.js';
 
 // import { createAdminIfNotExists } from './controllers/initAdmin.js';
 
@@ -176,6 +178,15 @@ const startServer = async () => {
       console.log('✅ Face models preloaded');
     } catch (e) {
       console.warn('⚠️ Face models preloading failed, will load on demand:', e.message);
+    }
+
+    // Initialize email service
+    const emailServiceReady = initializeEmailService();
+    if (emailServiceReady) {
+      // Start task status scheduler
+      await startTaskStatusScheduler();
+    } else {
+      console.warn('⚠️ Email service not configured. Task status scheduler will not run.');
     }
 
     // Setup chat socket handlers
