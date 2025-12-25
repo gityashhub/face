@@ -6,9 +6,8 @@ import toast from 'react-hot-toast';
 import axios from 'axios';
 
 // Create axios instance
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://face-votd.onrender.com/api';
 const API = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: '/api',
   headers: {
     'Content-Type': 'application/json'
   }

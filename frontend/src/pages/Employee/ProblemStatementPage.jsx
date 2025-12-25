@@ -19,7 +19,7 @@ const ProblemStatementPage = () => {
   const [employeeData, setEmployeeData] = useState(null);
 
   // Use relative path for Vite proxy
-  const API_BASE = import.meta.env.VITE_API_URL || 'https://face-votd.onrender.com/api';
+  const API_BASE = '/api';
   const getAuthToken = () => localStorage.getItem('token');
 
   useEffect(() => {
