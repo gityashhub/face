@@ -121,13 +121,16 @@ export const createLead = async (req, res) => {
 
     console.log('Final lead data before save:', leadData);
 
-    // Check for duplicate email
-    const existingLead = await Lead.findOne({ email: leadData.email });
+    // Check for duplicate email only for the same assigned employee
+    // This allows different employees to have leads with the same email (same contact, different opportunity)
+    const existingLead = await Lead.findOne({ 
+      email: leadData.email,
+      assignedTo: leadData.assignedTo
+    });
     if (existingLead) {
       return res.status(400).json({
         success: false,
-        message: 'A lead with this email already exists',
-        existingLeadId: existingLead._id
+        message: 'This email is already assigned to you as a lead. Please update the existing lead or assign it to a different employee.'
       });
     }
 
