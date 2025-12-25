@@ -9,10 +9,9 @@ const employeeSchema = new mongoose.Schema({
     unique: true
   },
   
-  // Employee ID (auto-generated)
+  // Employee ID (auto-generated) - Removed unique constraint as User model handles this
   employeeId: {
     type: String,
-    unique: true,
     uppercase: true
   },
 
@@ -255,52 +254,8 @@ employeeSchema.index({ status: 1 });
 employeeSchema.index({ 'personalInfo.firstName': 1 });
 employeeSchema.index({ 'personalInfo.lastName': 1 });
 
-// Auto-generate employeeId with retry logic to handle race conditions
-employeeSchema.pre('save', async function(next) {
-  if (!this.employeeId) {
-    try {
-      let employeeId;
-      let retries = 3;
-      let generated = false;
-
-      while (retries > 0 && !generated) {
-        // Use aggregation to find the maximum employee number
-        const result = await this.constructor.aggregate([
-          { $match: { employeeId: { $exists: true, $ne: null } } },
-          { $addFields: { 
-              empNumber: { 
-                $toInt: { 
-                  $substr: ['$employeeId', 3, -1] 
-                } 
-              } 
-            }
-          },
-          { $group: { _id: null, maxNumber: { $max: '$empNumber' } } }
-        ]);
-
-        const maxNumber = (result.length > 0 && result[0].maxNumber) ? result[0].maxNumber : 0;
-        const nextNumber = maxNumber + 1;
-        employeeId = `EMP${nextNumber.toString().padStart(3, '0')}`;
-
-        // Check if this ID already exists
-        const exists = await this.constructor.findOne({ employeeId });
-        if (!exists) {
-          this.employeeId = employeeId;
-          generated = true;
-        } else {
-          retries--;
-        }
-      }
-
-      if (!generated) {
-        throw new Error('Failed to generate unique employee ID after multiple retries');
-      }
-    } catch (error) {
-      return next(error);
-    }
-  }
-  next();
-});
+// Note: employeeId is now managed by the User model to avoid conflicts
+// The Employee model receives employeeId from the User model during creation
 
 
 // Pre-save middleware to ensure leave balance is initialized

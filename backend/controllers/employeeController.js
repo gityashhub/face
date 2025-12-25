@@ -70,7 +70,7 @@ export const createEmployee = async (req, res) => {
       console.log('ℹ️ No face data provided - face registration is optional');
     }
 
-    // Create user account AFTER face validation to avoid orphans
+    // Create user account - this auto-generates employeeId
     const user = await User.create({
       name: `${employeeData.personalInfo.firstName} ${employeeData.personalInfo.lastName}`,
       email: email,
@@ -78,19 +78,19 @@ export const createEmployee = async (req, res) => {
       role: 'employee'
     });
 
-    // Create employee record
+    // Create employee record with the employeeId from user
     const employee = await Employee.create({
       ...cleanEmployeeData,
       user: user._id,
+      employeeId: user.employeeId, // Use the user's generated employeeId
       // Store face data directly in employee model
       faceDescriptor: validFaceDescriptor,
       faceImage: validFaceImage,
       hasFaceRegistered: faceRegistered
     });
 
-    // Update user with employeeId
-    user.employeeId = employee.employeeId;
-    user.password = employee.employeeId; // Employee ID is the password
+    // Update user password to be the employee ID
+    user.password = user.employeeId; // Employee ID is the password
     await user.save();
 
     // If valid face data was provided, create FaceData record
