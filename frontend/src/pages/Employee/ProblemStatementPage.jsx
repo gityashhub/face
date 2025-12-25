@@ -9,7 +9,7 @@ import {
   X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import axios from 'axios';
+import api from '../../utils/api';
 
 const ProblemStatementPage = () => {
   const [problems, setProblems] = useState([]);
@@ -18,27 +18,19 @@ const ProblemStatementPage = () => {
   const [newProblem, setNewProblem] = useState('');
   const [employeeData, setEmployeeData] = useState(null);
 
-  // Use relative path for Vite proxy
-  const API_BASE = '/api';
-  const getAuthToken = () => localStorage.getItem('token');
-
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         
         // Get employee data
-        const profileRes = await axios.get(`${API_BASE}/auth/me`, {
-          headers: { Authorization: `Bearer ${getAuthToken()}` }
-        });
+        const profileRes = await api.get('/auth/me');
         if (profileRes.data?.success) {
           setEmployeeData(profileRes.data.data);
         }
 
         // Get all problems
-        const problemsRes = await axios.get(`${API_BASE}/problems`, {
-          headers: { Authorization: `Bearer ${getAuthToken()}` }
-        });
+        const problemsRes = await api.get('/problems');
         if (problemsRes.data?.success) {
           setProblems(problemsRes.data.data || []);
         }
@@ -59,9 +51,8 @@ const ProblemStatementPage = () => {
     }
 
     try {
-      const res = await axios.post(`${API_BASE}/problems`, 
-        { description: newProblem },
-        { headers: { Authorization: `Bearer ${getAuthToken()}` } }
+      const res = await api.post('/problems', 
+        { description: newProblem }
       );
       if (res.data?.success) {
         setProblems(prev => [res.data.data, ...prev]);
@@ -76,9 +67,8 @@ const ProblemStatementPage = () => {
 
   const handleSolveProblem = async (problemId) => {
     try {
-      const res = await axios.patch(`${API_BASE}/problems/${problemId}/solve`, 
-        {},
-        { headers: { Authorization: `Bearer ${getAuthToken()}` } }
+      const res = await api.patch(`/problems/${problemId}/solve`, 
+        {}
       );
       if (res.data?.success) {
         setProblems(prev =>
