@@ -25,7 +25,7 @@ import leaveRoutes from './routes/leaveRoutes.js';
 import taskRoutes from './routes/taskRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
 import departmentRoutes from './routes/departmentRoutes.js';
-import leadsRoutes from  './routes/leadRoutes.js';
+import leadsRoutes from './routes/leadRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import problemRoutes from './routes/problemRoutes.js';
 import messageRoutes from './routes/messageRoutes.js';
@@ -102,6 +102,13 @@ app.use((req, res, next) => {
 });
 
 // ----------------- ROUTES -----------------
+// Debug middleware to log all API requests
+app.use('/api', (req, res, next) => {
+  console.log(`[API Debug] ${req.method} ${req.url} - Headers:`, req.headers['authorization'] ? 'Auth present' : 'No Auth');
+  next();
+});
+
+
 app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/dashboard', dashboardRoutes);
@@ -134,7 +141,7 @@ app.get('/api/health', (req, res) => {
 // Serve static files from React app in production
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../frontend/dist')));
-  
+
   // Handle React routing, return all requests to React app
   app.get('/{*splat}', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));

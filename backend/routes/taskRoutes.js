@@ -18,6 +18,13 @@ import { requireDepartment } from '../middleware/departmentAccess.js';
 
 const router = express.Router();
 
+// Debug log for task router
+router.use((req, res, next) => {
+  console.log(`[TaskRouter] Hit: ${req.method} ${req.url}`);
+  next();
+});
+
+
 // Validation middleware for task creation (simplified - removed title, project, category)
 
 const taskValidation = [

@@ -55,29 +55,29 @@ export const createTask = async (req, res) => {
       });
     }
 
-  // Validate target employee exists
-  const targetEmployee = await Employee.findById(req.body.assignedTo);
-  if (!targetEmployee) {
-    return res.status(400).json({
-      success: false,
-      message: 'Assigned employee not found',
-    });
-  }
+    // Validate target employee exists
+    const targetEmployee = await Employee.findById(req.body.assignedTo);
+    if (!targetEmployee) {
+      return res.status(400).json({
+        success: false,
+        message: 'Assigned employee not found',
+      });
+    }
 
-  // Create the task (simplified - no title, project, category required)
-  const taskData = {
-    title: req.body.title || 'Task',
-    description: req.body.description,
-    assignedTo: req.body.assignedTo,
-    assignedBy: req.user.id,
-    project: req.body.project || '',
-    priority: req.body.priority || 'Medium',
-    dueDate: req.body.dueDate,
-    category: req.body.category || 'Other',
-    estimatedHours: req.body.estimatedHours || 0,
-    status: 'Not Started',
-    progress: 0
-  };
+    // Create the task (simplified - no title, project, category required)
+    const taskData = {
+      title: req.body.title || 'Task',
+      description: req.body.description,
+      assignedTo: req.body.assignedTo,
+      assignedBy: req.user.id,
+      project: req.body.project || '',
+      priority: req.body.priority || 'Medium',
+      dueDate: req.body.dueDate,
+      category: req.body.category || 'Other',
+      estimatedHours: req.body.estimatedHours || 0,
+      status: 'Not Started',
+      progress: 0
+    };
 
     console.log('Creating task with data:', taskData);
 
@@ -121,27 +121,29 @@ export const createTask = async (req, res) => {
 // @access  Private
 
 export const getTasks = async (req, res) => {
+  console.log('[TaskController] getTasks called');
+
   try {
-    const { 
-      page = 1, 
-      limit = 50, 
-      status, 
-      priority, 
-      assignedTo, 
+    const {
+      page = 1,
+      limit = 50,
+      status,
+      priority,
+      assignedTo,
       search,
       overdue
     } = req.query;
 
     let query = {};
 
-  // Build query based on user role
-  const guard = await guardEmployeeTaskAccess(req, res);
-  if (!guard.ok) return;
+    // Build query based on user role
+    const guard = await guardEmployeeTaskAccess(req, res);
+    if (!guard.ok) return;
 
-  if (req.user.role === 'employee') {
-    query.assignedTo = guard.employee._id;
-    console.log('Employee query filter:', query);
-  }
+    if (req.user.role === 'employee') {
+      query.assignedTo = guard.employee._id;
+      console.log('Employee query filter:', query);
+    }
 
     // Apply filters
     if (status) query.status = status;
@@ -291,17 +293,17 @@ export const updateTask = async (req, res) => {
           message: 'Access denied'
         });
       }
-      
+
       // Employees can only update specific fields
       const allowedUpdates = ['status', 'progress', 'actualHours', 'comments', 'subtasks'];
       const updates = {};
-      
+
       Object.keys(req.body).forEach(key => {
         if (allowedUpdates.includes(key)) {
           updates[key] = req.body[key];
         }
       });
-      
+
       req.body = updates;
     }
 
