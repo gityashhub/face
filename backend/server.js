@@ -63,6 +63,9 @@ const allowedOrigins = [
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
+// Add Vercel production URL if known, or allow all for debugging (less secure but helps identify if CORS is the issue)
+// const corsOptions = { origin: true, ... } // Use this for debugging only
+
 const corsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl requests),
@@ -205,7 +208,7 @@ const startServer = async () => {
     httpServer.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📊 Admin Panel: http://localhost:${PORT}`);
-      console.log(`🔗 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+      console.log(`🔗 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:5000'}`);
       console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
     });
 
