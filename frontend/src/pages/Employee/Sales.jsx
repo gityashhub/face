@@ -74,14 +74,10 @@ const SalesPage = () => {
 
   // Stats (mocked for demo — replace with real API if available)
   const stats = {
-    monthlyTarget: 500000,
     actualSales: leads
       .filter(l => l.status === 'Won')
-      .reduce((sum, l) => sum + (l.wonDetails?.finalValue || 0), 0),
-    commission: 40000,
-    rank: 3,
-    teamSize: 10
-  };
+      .reduce((sum, l) => sum + (l.wonDetails?.finalValue || 0), 0)
+  };;
 
   // Helpers
   const getStatusColor = (status) => {
@@ -190,24 +186,9 @@ const SalesPage = () => {
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <StatCard
-              title="Monthly Target"
-              value={formatCurrency(stats.monthlyTarget)}
-              progress={Math.min(100, (stats.actualSales / stats.monthlyTarget) * 100)}
-            />
-            <StatCard
-              title="Sales Achieved"
+             title="Sales Achieved"
               value={formatCurrency(stats.actualSales)}
               color="green"
-            />
-            <StatCard
-              title="Commission"
-              value={formatCurrency(stats.commission)}
-              color="neon-pink"
-            />
-            <StatCard
-              title="Rank"
-              value={`#${stats.rank}`}
-              subtitle={`in team of ${stats.teamSize}`}
             />
           </div>
         </div>
