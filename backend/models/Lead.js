@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const meetingSchema = new mongoose.Schema({
   meetingId: {
     type: String,
-    unique: true,
+    // Removed unique: true - uniqueness is per-lead, generated when meeting is added
     // required: true
   },
   type: {
