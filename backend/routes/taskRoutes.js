@@ -68,25 +68,28 @@ const statusValidation = [
 ];
 
 // Apply auth middleware to all routes
-router.use(protect);
+// router.use(protect);
 // Employees must belong to Developer, Designing, or BDE to access task module
-router.use(requireDepartment(['developer', 'development', 'design', 'designing', 'bde', 'businessdevelopment', 'businessdevelopmentexecutive']));
+// router.use(requireDepartment(['developer', 'development', 'design', 'designing', 'bde', 'businessdevelopment', 'businessdevelopmentexecutive']));
+
+// Debug route
+router.get('/ping', (req, res) => res.json({ msg: 'pong' }));
 
 // Routes
 router.route('/')
-  .get(getTasks)
-  .post(taskValidation, createTask);
+  .get(protect, getTasks)
+  .post(protect, taskValidation, createTask);
 
-router.get('/stats', getTaskStats);
+router.get('/stats', protect, getTaskStats);
 
 router.route('/:id')
-  .get(getTaskById)
-  .put(updateTask)
-  .delete(deleteTask);
+  .get(protect, getTaskById)
+  .put(protect, updateTask)
+  .delete(protect, deleteTask);
 
-router.post('/:id/comments', commentValidation, addComment);
-router.put('/:id/progress', progressValidation, updateProgress);
-router.put('/:id/status', statusValidation, changeStatus);
-router.put('/:id/subtasks/:subtaskId', toggleSubtask);
+router.post('/:id/comments', protect, commentValidation, addComment);
+router.put('/:id/progress', protect, progressValidation, updateProgress);
+router.put('/:id/status', protect, statusValidation, changeStatus);
+router.put('/:id/subtasks/:subtaskId', protect, toggleSubtask);
 
 export default router;
