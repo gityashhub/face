@@ -255,25 +255,45 @@ employeeSchema.index({ status: 1 });
 employeeSchema.index({ 'personalInfo.firstName': 1 });
 employeeSchema.index({ 'personalInfo.lastName': 1 });
 
-// Auto-generate employeeId
+// Auto-generate employeeId with retry logic to handle race conditions
 employeeSchema.pre('save', async function(next) {
   if (!this.employeeId) {
     try {
-      // Find the last employee ID to generate the next one
-      const lastEmployee = await this.constructor.findOne(
-        { employeeId: { $exists: true } },
-        {},
-        { sort: { employeeId: -1 } }
-      );
+      let employeeId;
+      let retries = 3;
+      let generated = false;
 
-      if (lastEmployee && lastEmployee.employeeId) {
-        // Extract number from last employee ID (e.g., EMP001 -> 1)
-        const lastNumber = parseInt(lastEmployee.employeeId.replace(/\D/g, ''));
-        const nextNumber = lastNumber + 1;
-        this.employeeId = `EMP${nextNumber.toString().padStart(3, '0')}`;
-      } else {
-        // First employee
-        this.employeeId = 'EMP001';
+      while (retries > 0 && !generated) {
+        // Use aggregation to find the maximum employee number
+        const result = await this.constructor.aggregate([
+          { $match: { employeeId: { $exists: true, $ne: null } } },
+          { $addFields: { 
+              empNumber: { 
+                $toInt: { 
+                  $substr: ['$employeeId', 3, -1] 
+                } 
+              } 
+            }
+          },
+          { $group: { _id: null, maxNumber: { $max: '$empNumber' } } }
+        ]);
+
+        const maxNumber = (result.length > 0 && result[0].maxNumber) ? result[0].maxNumber : 0;
+        const nextNumber = maxNumber + 1;
+        employeeId = `EMP${nextNumber.toString().padStart(3, '0')}`;
+
+        // Check if this ID already exists
+        const exists = await this.constructor.findOne({ employeeId });
+        if (!exists) {
+          this.employeeId = employeeId;
+          generated = true;
+        } else {
+          retries--;
+        }
+      }
+
+      if (!generated) {
+        throw new Error('Failed to generate unique employee ID after multiple retries');
       }
     } catch (error) {
       return next(error);
