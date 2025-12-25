@@ -58,6 +58,8 @@ const allowedOrigins = [
   "https://tarunaems.vercel.app",
   "https://face-votd.onrender.com",
   "http://localhost:5000",
+  "http://localhost:10000",
+  "http://localhost:5000",
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
