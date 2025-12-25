@@ -13,6 +13,26 @@ const connectDB = async () => {
     const conn = await mongoose.connect(mongoUri);
     console.log(`📦 MongoDB Connected: ${conn.connection.host}`);
 
+    // Clean up problematic indexes on startup
+    try {
+      const db = mongoose.connection.db;
+      const leadsCollection = db.collection('leads');
+      
+      // Drop the problematic meetings.meetingId unique index if it exists
+      try {
+        await leadsCollection.dropIndex('meetings.meetingId_1');
+        console.log('✅ Dropped problematic meetings.meetingId_1 index');
+      } catch (err) {
+        if (err.message.includes('index not found')) {
+          console.log('✅ meetings.meetingId_1 index already removed');
+        } else {
+          console.log('⚠️ Note: Could not drop meetings.meetingId_1 index:', err.message);
+        }
+      }
+    } catch (error) {
+      console.log('⚠️ Could not clean up indexes:', error.message);
+    }
+
     mongoose.connection.on('error', (err) => {
       console.error('MongoDB connection error:', err);
     });
