@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, Building2, User } from 'lucide-react';
 import toast from 'react-hot-toast';
-import axios from 'axios';
+import api from '../../utils/api';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -42,8 +42,8 @@ const Login = () => {
         identifierType: isEmployeeId(loginData.email) ? 'Employee ID' : 'Email'
       });
 
-      // Use the proxy path configured in vite.config.js
-      const response = await axios.post('/api/auth/login', loginData);
+      // Use the centralized api instance
+      const response = await api.post('/auth/login', loginData);
 
       if (response.data.success) {
         // Extract department name - handle various response formats
@@ -87,7 +87,7 @@ console.log("Token in sessionStorage:", sessionStorage.getItem("token"));
 console.log("Token in localStorage:", localStorage.getItem("token"));
 
         // Set axios default header for future requests
-        axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+        api.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
 
         // Show success message with user info
         const loginType = isEmployeeId(formData.email) ? 'Employee ID' : 'Email';
