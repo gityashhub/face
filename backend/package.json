@@ -32,7 +32,7 @@
     "express": "^5.1.0",
     "express-rate-limit": "^8.1.0",
     "express-validator": "^7.2.1",
-    "face-api.js": "^0.22.2",
+    "face-api.js": "^0.20.0",
     "form-data": "^4.0.5",
     "groq-sdk": "^0.37.0",
     "helmet": "^8.1.0",
